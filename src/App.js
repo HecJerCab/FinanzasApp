@@ -148,7 +148,84 @@ function SectionTitle({children}){
   return <p style={{fontSize:12,fontWeight:600,color:D.textMuted,textTransform:"uppercase",letterSpacing:1,margin:"20px 0 10px"}}>{children}</p>;
 }
 
-function CatAccordion({title,color,items,moneda}){
+function SwipeRow({record,onEdit,onDelete,moneda,color}){
+  const [offset,setOffset]=useState(0);
+  const startX=useRef(null);
+  const THRESHOLD=60;
+
+  const onTouchStart=e=>{ startX.current=e.touches[0].clientX; };
+  const onTouchMove=e=>{
+    if(startX.current===null) return;
+    const dx=e.touches[0].clientX-startX.current;
+    if(dx<0) setOffset(Math.max(dx,-120));
+  };
+  const onTouchEnd=()=>{
+    if(offset<-THRESHOLD) setOffset(-120);
+    else setOffset(0);
+    startX.current=null;
+  };
+
+  return(
+    <div style={{position:"relative",overflow:"hidden",borderBottom:`1px solid ${D.border}22`}}>
+      <div style={{position:"absolute",right:0,top:0,bottom:0,display:"flex",alignItems:"stretch"}}>
+        <button onClick={()=>{setOffset(0);onEdit(record);}} style={{width:60,background:"#2980b922",color:"#6cb8f7",border:"none",fontSize:18,cursor:"pointer"}}>✏️</button>
+        <button onClick={()=>{setOffset(0);onDelete(record.id);}} style={{width:60,background:D.red+"22",color:D.red,border:"none",fontSize:18,cursor:"pointer"}}>🗑️</button>
+      </div>
+      <div
+        onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
+        onClick={()=>offset!==0&&setOffset(0)}
+        style={{transform:`translateX(${offset}px)`,transition:startX.current===null?"transform .2s ease":"none",background:D.bg,display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 0"}}
+      >
+        <div style={{flex:1,minWidth:0}}>
+          <p style={{fontSize:14,fontWeight:500,margin:"0 0 3px",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{record.titulo}</p>
+          <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
+            {record.categoria&&<span style={{fontSize:11,background:(color||D.accent)+"22",color:color||D.accent,padding:"2px 8px",borderRadius:20,fontWeight:500}}>{record.categoria}</span>}
+            <span style={{fontSize:11,color:D.textMuted}}>{record.persona?`${record.persona} · `:""}{record.fecha}</span>
+          </div>
+        </div>
+        <span style={{fontWeight:600,color:color||D.accent,marginLeft:8,whiteSpace:"nowrap"}}>{fmt(record.monto||record.acumulado,record.moneda)}</span>
+      </div>
+    </div>
+  );
+}
+
+function EditModal({record,type,onSave,onClose}){
+  const [d,setD]=useState({...record});
+  const upd=(k,v)=>setD(p=>({...p,[k]:v}));
+  const cats={ingresos:CAT_INGRESO,gastos:CAT_GASTO,ahorros:CAT_AHORRO,inversiones:CAT_INV};
+  const fields=[
+    {id:"titulo",label:"Descripción",type:"text"},
+    {id:"monto",label:"Monto",type:"number"},
+    {id:"moneda",label:"Moneda",options:MONEDAS},
+    {id:"categoria",label:"Categoría",options:cats[type]||[]},
+    {id:"persona",label:"¿Quién?",type:"text"},
+    {id:"fecha",label:"Fecha",type:"date"},
+    {id:"nota",label:"Nota",type:"text"},
+  ];
+  return(
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.75)",zIndex:200,display:"flex",alignItems:"flex-end"}} onClick={onClose}>
+      <div onClick={e=>e.stopPropagation()} style={{background:D.surface,borderRadius:"20px 20px 0 0",padding:"20px 16px 32px",width:"100%",border:`1px solid ${D.border}`,maxHeight:"85vh",overflowY:"auto"}} className="slide-in">
+        <div style={{width:40,height:4,background:D.border,borderRadius:4,margin:"0 auto 16px"}}/>
+        <p style={{fontWeight:600,fontSize:16,marginBottom:14}}>Editar registro</p>
+        {fields.map(f=>(
+          <div key={f.id} style={{marginBottom:10}}>
+            <label style={{display:"block",fontSize:11,color:D.textMuted,marginBottom:4,fontWeight:500,textTransform:"uppercase",letterSpacing:.3}}>{f.label}</label>
+            {f.options?(
+              <select value={d[f.id]||""} onChange={e=>upd(f.id,e.target.value)}>
+                {f.options.map(o=><option key={o}>{o}</option>)}
+              </select>
+            ):(
+              <input type={f.type||"text"} value={d[f.id]||""} onChange={e=>upd(f.id,e.target.value)}/>
+            )}
+          </div>
+        ))}
+        <button onClick={()=>onSave(d)} style={{width:"100%",padding:"13px",borderRadius:12,border:"none",background:D.accent,color:"#fff",fontSize:15,fontWeight:600,marginTop:4}}>Guardar cambios ↗</button>
+      </div>
+    </div>
+  );
+}
+
+function CatAccordion({title,color,items,moneda,onEdit,onDelete}){
   const [open,setOpen]=useState(false);
   const total=items.reduce((s,r)=>s+r.monto,0);
   if(!items.length) return null;
@@ -162,12 +239,8 @@ function CatAccordion({title,color,items,moneda}){
       </div>
       {open&&<div style={{borderTop:`1px solid ${D.border}`}}>
         {items.map(r=>(
-          <div key={r.id} style={{display:"flex",justifyContent:"space-between",padding:"10px 14px 10px 32px",borderBottom:`1px solid ${D.border}22`}}>
-            <div>
-              <p style={{fontSize:13,margin:0,color:D.text}}>{r.titulo}</p>
-              <p style={{fontSize:11,color:D.textMuted,margin:0}}>{r.persona?`${r.persona} · `:""}{r.fecha}</p>
-            </div>
-            <span style={{fontSize:13,fontWeight:500,color}}>{fmt(r.monto,r.moneda)}</span>
+          <div key={r.id} style={{paddingLeft:18}}>
+            <SwipeRow record={r} onEdit={onEdit} onDelete={onDelete} color={color} moneda={moneda}/>
           </div>
         ))}
       </div>}
