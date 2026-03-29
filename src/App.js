@@ -358,9 +358,14 @@ export default function App(){
 
   const filterByPeriod=arr=>arr.filter(r=>{
     if(!r.fecha) return false;
-    if(period==="semana") return r.fecha>=thisWeek();
-    if(period==="mes") return r.fecha.startsWith(thisMonth());
-    if(period==="año") return r.fecha.startsWith(thisYear());
+    const fecha = r.fecha.slice(0,10);
+    if(period==="semana") return fecha>=thisWeek();
+    if(period==="mes"){
+      const [y,m]=fecha.split("-");
+      const now=new Date();
+      return parseInt(y)===now.getFullYear() && parseInt(m)===(now.getMonth()+1);
+    }
+    if(period==="año") return fecha.startsWith(thisYear());
     return true;
   }).filter(r=>r.moneda===moneda);
 
