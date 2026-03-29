@@ -30,6 +30,7 @@ const D = {
   text:"#f0f0ff", textMuted:"#7878a0", accent:"#6c8ef7", green:"#4fbe8a",
   red:"#f7704f", yellow:"#f7c44f", purple:"#a77cf7",
 };
+const isDesktop = () => window.innerWidth >= 768;
 
 const css = `
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
@@ -41,6 +42,12 @@ const css = `
   button { font-family:'Inter',sans-serif; cursor:pointer; }
   .slide-in { animation: slideIn .25s ease; }
   @keyframes slideIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+  @media (min-width: 768px) {
+    .app-container { max-width: 900px !important; }
+    .desktop-grid { display: grid !important; grid-template-columns: 340px 1fr; gap: 24px; align-items: start; }
+    .desktop-hide { display: none !important; }
+    .desktop-list { font-size: 14px; }
+  }
 `;
 
 async function notionCall(token,method,path,body){
@@ -115,8 +122,15 @@ function LineChart({data,color=D.accent,moneda="ARS"}){
 
 function SwipeRow({record,type,onEdit,onDelete,color}){
   const [offset,setOffset]=useState(0);
+  const [desktop,setDesktop]=useState(isDesktop());
   const startX=useRef(null);
   const isDragging=useRef(false);
+
+  useEffect(()=>{
+    const handler=()=>setDesktop(isDesktop());
+    window.addEventListener("resize",handler);
+    return()=>window.removeEventListener("resize",handler);
+  },[]);
 
   const onTouchStart=e=>{ startX.current=e.touches[0].clientX; isDragging.current=false; };
   const onTouchMove=e=>{
@@ -126,33 +140,32 @@ function SwipeRow({record,type,onEdit,onDelete,color}){
     if(dx<0) setOffset(Math.max(dx,-130));
     else if(offset<0) setOffset(Math.min(0,offset+(dx*0.3)));
   };
-  const onTouchEnd=()=>{
-    if(offset<-50) setOffset(-130);
-    else setOffset(0);
-    startX.current=null;
-  };
+  const onTouchEnd=()=>{ if(offset<-50) setOffset(-130); else setOffset(0); startX.current=null; };
+
+  if(desktop) return(
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 0",borderBottom:`1px solid ${D.border}33`}}>
+      <div style={{flex:1,minWidth:0}}>
+        <p style={{fontSize:14,fontWeight:500,margin:"0 0 4px",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{record.titulo}</p>
+        <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
+          {(record.categoria||record.tipo)&&<span style={{fontSize:11,background:(color||D.accent)+"22",color:color||D.accent,padding:"2px 8px",borderRadius:20,fontWeight:500}}>{record.categoria||record.tipo}</span>}
+          <span style={{fontSize:12,color:D.textMuted}}>{record.persona?`${record.persona} · `:""}{record.fecha}</span>
+        </div>
+      </div>
+      <div style={{display:"flex",alignItems:"center",gap:8,marginLeft:16}}>
+        <span style={{fontWeight:600,color:color||D.accent,whiteSpace:"nowrap",fontSize:15}}>{fmt(record.monto||record.acumulado,record.moneda)}</span>
+        <button onClick={()=>onEdit(record,type)} title="Editar" style={{background:D.accent+"22",border:`1px solid ${D.accent}44`,borderRadius:8,padding:"6px 10px",color:D.accent,fontSize:13,fontWeight:500}}>✏️ Editar</button>
+        <button onClick={()=>onDelete(record.id)} title="Eliminar" style={{background:D.red+"22",border:`1px solid ${D.red}44`,borderRadius:8,padding:"6px 10px",color:D.red,fontSize:13,fontWeight:500}}>🗑️ Borrar</button>
+      </div>
+    </div>
+  );
 
   return(
     <div style={{position:"relative",overflow:"hidden",borderBottom:`1px solid ${D.border}33`}}>
       <div style={{position:"absolute",right:0,top:0,bottom:0,width:130,display:"flex"}}>
-        <button
-          onTouchEnd={e=>{e.preventDefault();e.stopPropagation();setOffset(0);onEdit(record,type);}}
-          onClick={()=>{setOffset(0);onEdit(record,type);}}
-          style={{flex:1,background:"#2471a322",color:"#6cb8f7",border:"none",fontSize:13,fontWeight:600,cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:3}}>
-          <span style={{fontSize:18}}>✏️</span><span>Editar</span>
-        </button>
-        <button
-          onTouchEnd={e=>{e.preventDefault();e.stopPropagation();setOffset(0);onDelete(record.id);}}
-          onClick={()=>{setOffset(0);onDelete(record.id);}}
-          style={{flex:1,background:D.red+"22",color:D.red,border:"none",fontSize:13,fontWeight:600,cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:3}}>
-          <span style={{fontSize:18}}>🗑️</span><span>Borrar</span>
-        </button>
+        <button onTouchEnd={e=>{e.preventDefault();e.stopPropagation();setOffset(0);onEdit(record,type);}} onClick={()=>{setOffset(0);onEdit(record,type);}} style={{flex:1,background:"#2471a322",color:"#6cb8f7",border:"none",fontSize:13,fontWeight:600,cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:3}}><span style={{fontSize:18}}>✏️</span><span>Editar</span></button>
+        <button onTouchEnd={e=>{e.preventDefault();e.stopPropagation();setOffset(0);onDelete(record.id);}} onClick={()=>{setOffset(0);onDelete(record.id);}} style={{flex:1,background:D.red+"22",color:D.red,border:"none",fontSize:13,fontWeight:600,cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:3}}><span style={{fontSize:18}}>🗑️</span><span>Borrar</span></button>
       </div>
-      <div
-        onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
-        style={{transform:`translateX(${offset}px)`,transition:startX.current===null?"transform .25s ease":"none",background:D.bg,padding:"12px 0",cursor:"pointer"}}
-        onClick={()=>{ if(isDragging.current) return; if(offset!==0) setOffset(0); }}
-      >
+      <div onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd} style={{transform:`translateX(${offset}px)`,transition:startX.current===null?"transform .25s ease":"none",background:D.bg,padding:"12px 0",cursor:"pointer"}} onClick={()=>{ if(isDragging.current) return; if(offset!==0) setOffset(0); }}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
           <div style={{flex:1,minWidth:0}}>
             <p style={{fontSize:14,fontWeight:500,margin:"0 0 4px",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{record.titulo}</p>
@@ -449,7 +462,7 @@ export default function App(){
   );
 
   return(
-    <div style={{maxWidth:520,margin:"0 auto",paddingBottom:80,minHeight:"100vh",background:D.bg}}>
+    <div style={{maxWidth:900,margin:"0 auto",paddingBottom:80,minHeight:"100vh",background:D.bg}}>
       {msg.text&&<div style={{background:msg.type==="error"?D.red+"22":D.green+"22",color:msg.type==="error"?D.red:D.green,padding:"10px 16px",fontSize:13,textAlign:"center",fontWeight:500}}>{msg.text}</div>}
 
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"14px 16px",borderBottom:`1px solid ${D.border}`,position:"sticky",top:0,background:D.bg,zIndex:50}}>
