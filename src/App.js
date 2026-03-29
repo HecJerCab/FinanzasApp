@@ -277,6 +277,7 @@ export default function App(){
   const [setupStep,setSetupStep]=useState(()=>localStorage.getItem("nf_token")&&Object.keys(JSON.parse(localStorage.getItem("nf_dbs")||"{}")).length>0?"ready":"token");
   const [period,setPeriod]=useState("mes");
   const [moneda,setMoneda]=useState("ARS");
+  const [selectedMonth,setSelectedMonth]=useState(thisMonth());
   const [userName,setUserName]=useState(()=>localStorage.getItem("nf_user")||"");
   const [chartLoaded,setChartLoaded]=useState(false);
   const [showQuick,setShowQuick]=useState(false);
@@ -358,13 +359,9 @@ export default function App(){
 
   const filterByPeriod=arr=>arr.filter(r=>{
     if(!r.fecha) return false;
-    const fecha = r.fecha.slice(0,10);
+    const fecha=r.fecha.slice(0,10);
     if(period==="semana") return fecha>=thisWeek();
-    if(period==="mes"){
-      const [y,m]=fecha.split("-");
-      const now=new Date();
-      return parseInt(y)===now.getFullYear() && parseInt(m)===(now.getMonth()+1);
-    }
+    if(period==="mes") return fecha.startsWith(selectedMonth);
     if(period==="año") return fecha.startsWith(thisYear());
     return true;
   }).filter(r=>r.moneda===moneda);
@@ -424,17 +421,24 @@ export default function App(){
 
   function PeriodFilter(){
     return(
-      <div style={{display:"flex",gap:6,margin:"12px 0",flexWrap:"wrap",alignItems:"center"}}>
-        {["semana","mes","año","todo"].map(p=>(
-          <button key={p} onClick={()=>setPeriod(p)} style={{padding:"6px 14px",borderRadius:20,border:`1px solid ${period===p?D.accent:D.border}`,background:period===p?D.accent+"22":D.surface,color:period===p?D.accent:D.textMuted,fontSize:12,cursor:"pointer",fontWeight:period===p?600:400}}>
-            {p.charAt(0).toUpperCase()+p.slice(1)}
-          </button>
-        ))}
-        <div style={{marginLeft:"auto",display:"flex",gap:4}}>
-          {MONEDAS.map(m=>(
-            <button key={m} onClick={()=>setMoneda(m)} style={{padding:"6px 12px",borderRadius:20,border:`1px solid ${moneda===m?D.yellow:D.border}`,background:moneda===m?D.yellow+"22":D.surface,color:moneda===m?D.yellow:D.textMuted,fontSize:12,cursor:"pointer",fontWeight:moneda===m?600:400}}>{m}</button>
+      <div style={{margin:"12px 0"}}>
+        <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center",marginBottom:8}}>
+          {["semana","mes","año","todo"].map(p=>(
+            <button key={p} onClick={()=>setPeriod(p)} style={{padding:"6px 14px",borderRadius:20,border:`1px solid ${period===p?D.accent:D.border}`,background:period===p?D.accent+"22":D.surface,color:period===p?D.accent:D.textMuted,fontSize:12,cursor:"pointer",fontWeight:period===p?600:400}}>
+              {p.charAt(0).toUpperCase()+p.slice(1)}
+            </button>
           ))}
+          <div style={{marginLeft:"auto",display:"flex",gap:4}}>
+            {MONEDAS.map(m=>(
+              <button key={m} onClick={()=>setMoneda(m)} style={{padding:"6px 12px",borderRadius:20,border:`1px solid ${moneda===m?D.yellow:D.border}`,background:moneda===m?D.yellow+"22":D.surface,color:moneda===m?D.yellow:D.textMuted,fontSize:12,cursor:"pointer",fontWeight:moneda===m?600:400}}>{m}</button>
+            ))}
+          </div>
         </div>
+        {period==="mes"&&(
+          <input type="month" value={selectedMonth} onChange={e=>setSelectedMonth(e.target.value)}
+            style={{width:"100%",padding:"8px 12px",borderRadius:10,border:`1px solid ${D.accent}`,background:D.surface2,color:D.text,fontSize:14}}
+          />
+        )}
       </div>
     );
   }
