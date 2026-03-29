@@ -285,6 +285,20 @@ export default function App(){
   const [scannedAmount,setScannedAmount]=useState(null);
 
   useEffect(()=>{
+    const params=new URLSearchParams(window.location.search);
+    const cfg=params.get("cfg");
+    if(cfg){
+      try{
+        const {t,d,u}=JSON.parse(decodeURIComponent(cfg));
+        if(t&&d){
+          localStorage.setItem("nf_token",t);
+          localStorage.setItem("nf_dbs",JSON.stringify(d));
+          if(u) localStorage.setItem("nf_user",u);
+          window.history.replaceState({},"",window.location.pathname);
+          window.location.reload();
+        }
+      }catch(e){}
+    }
     const style=document.createElement("style"); style.textContent=css; document.head.appendChild(style);
     if(window.Chart){setChartLoaded(true);return;}
     const s=document.createElement("script");
@@ -638,7 +652,13 @@ export default function App(){
             <p style={{fontWeight:600,marginBottom:12}}>Notion</p>
             <p style={{fontSize:13,color:D.textMuted,marginBottom:12}}>Token: ●●●●{token.slice(-4)}</p>
             <button onClick={()=>loadAll()} disabled={loading} style={{width:"100%",padding:"12px",borderRadius:10,border:`1px solid ${D.border}`,background:D.surface2,color:D.text,fontSize:14,fontWeight:500,marginBottom:8}}>{loading?"Sincronizando...":"↻ Sincronizar"}</button>
-            <button onClick={()=>{localStorage.clear();window.location.reload();}} style={{width:"100%",padding:"12px",borderRadius:10,border:`1px solid ${D.red}44`,background:D.red+"11",color:D.red,fontSize:14,fontWeight:500}}>Desconectar</button>
+            <button onClick={()=>{
+            const cfg=encodeURIComponent(JSON.stringify({t:token,d:dbIds,u:userName}));
+            const url=`${window.location.origin}?cfg=${cfg}`;
+            navigator.clipboard?.writeText(url).then(()=>showMsg("Link copiado ✓")).catch(()=>showMsg("Link copiado ✓"));
+            prompt("Copiá este link y abrilo en el celular:",url);
+          }} style={{width:"100%",padding:"12px",borderRadius:10,border:`1px solid ${D.accent}44`,background:D.accent+"11",color:D.accent,fontSize:14,fontWeight:500,marginBottom:8}}>📱 Exportar al celular</button>
+          <button onClick={()=>{localStorage.clear();window.location.reload();}} style={{width:"100%",padding:"12px",borderRadius:10,border:`1px solid ${D.red}44`,background:D.red+"11",color:D.red,fontSize:14,fontWeight:500}}>Desconectar</button>
           </div>
         </>}
       </div>
