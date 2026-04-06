@@ -24,13 +24,13 @@ const today = () => new Date().toISOString().split("T")[0];
 const thisMonth = () => new Date().toISOString().slice(0,7);
 const thisWeek = () => { const d=new Date(); d.setDate(d.getDate()-d.getDay()); return d.toISOString().split("T")[0]; };
 const thisYear = () => new Date().getFullYear().toString();
+const isDesktop = () => window.innerWidth >= 768;
 
 const D = {
   bg:"#0f0f13", surface:"#1a1a24", surface2:"#22223a", border:"#2a2a40",
   text:"#f0f0ff", textMuted:"#7878a0", accent:"#6c8ef7", green:"#4fbe8a",
   red:"#f7704f", yellow:"#f7c44f", purple:"#a77cf7",
 };
-const isDesktop = () => window.innerWidth >= 768;
 
 const css = `
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
@@ -42,17 +42,25 @@ const css = `
   button { font-family:'Inter',sans-serif; cursor:pointer; }
   .slide-in { animation: slideIn .25s ease; }
   @keyframes slideIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
-  @media (min-width: 768px) {
-    .app-container { max-width: 900px !important; }
-    .desktop-grid { display: grid !important; grid-template-columns: 340px 1fr; gap: 24px; align-items: start; }
-    .desktop-hide { display: none !important; }
-    .desktop-list { font-size: 14px; }
-  }
+  input[type=number]::-webkit-inner-spin-button { opacity:1; }
 `;
 
-async function notionCall(token,method,path,body){
-  const res=await fetch(`/api/notion?path=${path}`,{method,headers:{"Authorization":`Bearer ${token}`,"Notion-Version":"2022-06-28","Content-Type":"application/json"},body:body?JSON.stringify(body):undefined});
-  return res.json();
+async function apiAuth(body, token) {
+  const r = await fetch("/api/auth", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    body: JSON.stringify(body)
+  });
+  return r.json();
+}
+
+async function apiData(body, token) {
+  const r = await fetch("/api/data", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify(body)
+  });
+  return r.json();
 }
 
 function PieChart({data}){
@@ -95,11 +103,7 @@ function BarChart({data,color=D.accent,moneda="ARS"}){
   useEffect(()=>{
     if(!ref.current||!data?.length||!window.Chart) return;
     if(ref.current._chart) ref.current._chart.destroy();
-    ref.current._chart=new window.Chart(ref.current.getContext("2d"),{
-      type:"bar",
-      data:{labels:data.map(d=>d.label),datasets:[{data:data.map(d=>d.value),backgroundColor:color+"99",borderRadius:8,borderSkipped:false}]},
-      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:i=>fmt(i.raw,moneda)},backgroundColor:D.surface2,titleColor:D.text,bodyColor:D.textMuted,borderColor:D.border,borderWidth:1}},scales:{y:{ticks:{callback:v=>fmtShort(v,moneda),color:D.textMuted,font:{size:10}},grid:{color:D.border+"55"},border:{display:false}},x:{grid:{display:false},ticks:{color:D.textMuted,font:{size:10},autoSkip:false,maxRotation:45},border:{display:false}}}}
-    });
+    ref.current._chart=new window.Chart(ref.current.getContext("2d"),{type:"bar",data:{labels:data.map(d=>d.label),datasets:[{data:data.map(d=>d.value),backgroundColor:color+"99",borderRadius:8,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:i=>fmt(i.raw,moneda)},backgroundColor:D.surface2,titleColor:D.text,bodyColor:D.textMuted,borderColor:D.border,borderWidth:1}},scales:{y:{ticks:{callback:v=>fmtShort(v,moneda),color:D.textMuted,font:{size:10}},grid:{color:D.border+"55"},border:{display:false}},x:{grid:{display:false},ticks:{color:D.textMuted,font:{size:10},autoSkip:false,maxRotation:45},border:{display:false}}}}});
   },[data]);
   if(!data?.length) return <p style={{color:D.textMuted,fontSize:13,textAlign:"center",padding:"1rem"}}>Sin datos</p>;
   return <div style={{position:"relative",height:180}}><canvas ref={ref}/></div>;
@@ -110,11 +114,7 @@ function LineChart({data,color=D.accent,moneda="ARS"}){
   useEffect(()=>{
     if(!ref.current||!data?.length||!window.Chart) return;
     if(ref.current._chart) ref.current._chart.destroy();
-    ref.current._chart=new window.Chart(ref.current.getContext("2d"),{
-      type:"line",
-      data:{labels:data.map(d=>d.label),datasets:[{data:data.map(d=>d.value),borderColor:color,backgroundColor:color+"22",tension:0.4,fill:true,pointRadius:5,pointBackgroundColor:color,pointBorderColor:D.bg,pointBorderWidth:2}]},
-      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:i=>fmt(i.raw,moneda)},backgroundColor:D.surface2,titleColor:D.text,bodyColor:D.textMuted,borderColor:D.border,borderWidth:1}},scales:{y:{ticks:{callback:v=>fmtShort(v,moneda),color:D.textMuted,font:{size:10}},grid:{color:D.border+"55"},border:{display:false}},x:{grid:{display:false},ticks:{color:D.textMuted,font:{size:10}},border:{display:false}}}}
-    });
+    ref.current._chart=new window.Chart(ref.current.getContext("2d"),{type:"line",data:{labels:data.map(d=>d.label),datasets:[{data:data.map(d=>d.value),borderColor:color,backgroundColor:color+"22",tension:0.4,fill:true,pointRadius:5,pointBackgroundColor:color,pointBorderColor:D.bg,pointBorderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:i=>fmt(i.raw,moneda)},backgroundColor:D.surface2,titleColor:D.text,bodyColor:D.textMuted,borderColor:D.border,borderWidth:1}},scales:{y:{ticks:{callback:v=>fmtShort(v,moneda),color:D.textMuted,font:{size:10}},grid:{color:D.border+"55"},border:{display:false}},x:{grid:{display:false},ticks:{color:D.textMuted,font:{size:10}},border:{display:false}}}}});
   },[data]);
   if(!data?.length) return <p style={{color:D.textMuted,fontSize:13,textAlign:"center",padding:"1rem"}}>Sin datos</p>;
   return <div style={{position:"relative",height:180}}><canvas ref={ref}/></div>;
@@ -125,22 +125,7 @@ function SwipeRow({record,type,onEdit,onDelete,color}){
   const [desktop,setDesktop]=useState(isDesktop());
   const startX=useRef(null);
   const isDragging=useRef(false);
-
-  useEffect(()=>{
-    const handler=()=>setDesktop(isDesktop());
-    window.addEventListener("resize",handler);
-    return()=>window.removeEventListener("resize",handler);
-  },[]);
-
-  const onTouchStart=e=>{ startX.current=e.touches[0].clientX; isDragging.current=false; };
-  const onTouchMove=e=>{
-    if(startX.current===null) return;
-    const dx=e.touches[0].clientX-startX.current;
-    if(Math.abs(dx)>8) isDragging.current=true;
-    if(dx<0) setOffset(Math.max(dx,-130));
-    else if(offset<0) setOffset(Math.min(0,offset+(dx*0.3)));
-  };
-  const onTouchEnd=()=>{ if(offset<-50) setOffset(-130); else setOffset(0); startX.current=null; };
+  useEffect(()=>{const h=()=>setDesktop(isDesktop());window.addEventListener("resize",h);return()=>window.removeEventListener("resize",h);},[]);
 
   if(desktop) return(
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 0",borderBottom:`1px solid ${D.border}33`}}>
@@ -153,19 +138,23 @@ function SwipeRow({record,type,onEdit,onDelete,color}){
       </div>
       <div style={{display:"flex",alignItems:"center",gap:8,marginLeft:16}}>
         <span style={{fontWeight:600,color:color||D.accent,whiteSpace:"nowrap",fontSize:15}}>{fmt(record.monto||record.acumulado,record.moneda)}</span>
-        <button onClick={()=>onEdit(record,type)} title="Editar" style={{background:D.accent+"22",border:`1px solid ${D.accent}44`,borderRadius:8,padding:"6px 10px",color:D.accent,fontSize:13,fontWeight:500}}>✏️ Editar</button>
-        <button onClick={()=>onDelete(record.id)} title="Eliminar" style={{background:D.red+"22",border:`1px solid ${D.red}44`,borderRadius:8,padding:"6px 10px",color:D.red,fontSize:13,fontWeight:500}}>🗑️ Borrar</button>
+        <button onClick={()=>onEdit(record,type)} style={{background:D.accent+"22",border:`1px solid ${D.accent}44`,borderRadius:8,padding:"6px 10px",color:D.accent,fontSize:13,fontWeight:500}}>✏️ Editar</button>
+        <button onClick={()=>onDelete(record.id,type)} style={{background:D.red+"22",border:`1px solid ${D.red}44`,borderRadius:8,padding:"6px 10px",color:D.red,fontSize:13,fontWeight:500}}>🗑️ Borrar</button>
       </div>
     </div>
   );
+
+  const onTouchStart=e=>{ startX.current=e.touches[0].clientX; isDragging.current=false; };
+  const onTouchMove=e=>{ if(startX.current===null) return; const dx=e.touches[0].clientX-startX.current; if(Math.abs(dx)>8) isDragging.current=true; if(dx<0) setOffset(Math.max(dx,-130)); else if(offset<0) setOffset(Math.min(0,offset+(dx*0.3))); };
+  const onTouchEnd=()=>{ if(offset<-50) setOffset(-130); else setOffset(0); startX.current=null; };
 
   return(
     <div style={{position:"relative",overflow:"hidden",borderBottom:`1px solid ${D.border}33`}}>
       <div style={{position:"absolute",right:0,top:0,bottom:0,width:130,display:"flex"}}>
         <button onTouchEnd={e=>{e.preventDefault();e.stopPropagation();setOffset(0);onEdit(record,type);}} onClick={()=>{setOffset(0);onEdit(record,type);}} style={{flex:1,background:"#2471a322",color:"#6cb8f7",border:"none",fontSize:13,fontWeight:600,cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:3}}><span style={{fontSize:18}}>✏️</span><span>Editar</span></button>
-        <button onTouchEnd={e=>{e.preventDefault();e.stopPropagation();setOffset(0);onDelete(record.id);}} onClick={()=>{setOffset(0);onDelete(record.id);}} style={{flex:1,background:D.red+"22",color:D.red,border:"none",fontSize:13,fontWeight:600,cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:3}}><span style={{fontSize:18}}>🗑️</span><span>Borrar</span></button>
+        <button onTouchEnd={e=>{e.preventDefault();e.stopPropagation();setOffset(0);onDelete(record.id,type);}} onClick={()=>{setOffset(0);onDelete(record.id,type);}} style={{flex:1,background:D.red+"22",color:D.red,border:"none",fontSize:13,fontWeight:600,cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:3}}><span style={{fontSize:18}}>🗑️</span><span>Borrar</span></button>
       </div>
-      <div onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd} style={{transform:`translateX(${offset}px)`,transition:startX.current===null?"transform .25s ease":"none",background:D.bg,padding:"12px 0",cursor:"pointer"}} onClick={()=>{ if(isDragging.current) return; if(offset!==0) setOffset(0); }}>
+      <div onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd} style={{transform:`translateX(${offset}px)`,transition:startX.current===null?"transform .25s ease":"none",background:D.bg,padding:"12px 0"}} onClick={()=>{ if(isDragging.current) return; if(offset!==0) setOffset(0); }}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
           <div style={{flex:1,minWidth:0}}>
             <p style={{fontSize:14,fontWeight:500,margin:"0 0 4px",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{record.titulo}</p>
@@ -194,13 +183,7 @@ function EditModal({record,type,onSave,onClose}){
         {[{id:"titulo",label:"Descripción",type:"text"},{id:"monto",label:"Monto",type:"number"},{id:"moneda",label:"Moneda",options:MONEDAS},{id:"categoria",label:"Categoría",options:catMap[type]||[]},{id:"persona",label:"¿Quién?",type:"text"},{id:"fecha",label:"Fecha",type:"date"},{id:"nota",label:"Nota",type:"text"}].map(f=>(
           <div key={f.id} style={{marginBottom:10}}>
             <label style={{display:"block",fontSize:11,color:D.textMuted,marginBottom:4,fontWeight:500,textTransform:"uppercase",letterSpacing:.3}}>{f.label}</label>
-            {f.options?(
-              <select value={d[f.id]||""} onChange={e=>upd(f.id,e.target.value)}>
-                {f.options.map(o=><option key={o}>{o}</option>)}
-              </select>
-            ):(
-              <input type={f.type||"text"} value={d[f.id]||""} onChange={e=>upd(f.id,e.target.value)}/>
-            )}
+            {f.options?(<select value={d[f.id]||""} onChange={e=>upd(f.id,e.target.value)}>{f.options.map(o=><option key={o}>{o}</option>)}</select>):(<input type={f.type||"text"} value={d[f.id]||""} onChange={e=>upd(f.id,e.target.value)}/>)}
           </div>
         ))}
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginTop:8}}>
@@ -212,12 +195,12 @@ function EditModal({record,type,onSave,onClose}){
   );
 }
 
-function ConfirmModal({message,onConfirm,onCancel}){
+function ConfirmModal({onConfirm,onCancel}){
   return(
     <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.8)",zIndex:300,display:"flex",alignItems:"center",justifyContent:"center",padding:"1rem"}} onClick={onCancel}>
       <div onClick={e=>e.stopPropagation()} style={{background:D.surface,borderRadius:16,padding:"24px",width:"100%",maxWidth:320,border:`1px solid ${D.border}`}} className="slide-in">
         <p style={{fontSize:16,fontWeight:600,marginBottom:8}}>¿Eliminar registro?</p>
-        <p style={{fontSize:13,color:D.textMuted,marginBottom:20}}>{message}</p>
+        <p style={{fontSize:13,color:D.textMuted,marginBottom:20}}>Esta acción no se puede deshacer.</p>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
           <button onClick={onCancel} style={{padding:"12px",borderRadius:10,border:`1px solid ${D.border}`,background:D.surface2,color:D.textMuted,fontSize:14,fontWeight:500}}>Cancelar</button>
           <button onClick={onConfirm} style={{padding:"12px",borderRadius:10,border:"none",background:D.red,color:"#fff",fontSize:14,fontWeight:600}}>Eliminar</button>
@@ -240,9 +223,7 @@ function CatAccordion({title,color,items,type,onEdit,onDelete}){
         <span style={{fontSize:11,color:D.textMuted,marginLeft:4}}>{open?"▲":"▼"}</span>
       </div>
       {open&&<div style={{borderTop:`1px solid ${D.border}`,padding:"0 14px"}}>
-        {items.map(r=>(
-          <SwipeRow key={r.id} record={r} type={type} onEdit={onEdit} onDelete={onDelete} color={color}/>
-        ))}
+        {items.map(r=><SwipeRow key={r.id} record={r} type={type} onEdit={onEdit} onDelete={onDelete} color={color}/>)}
       </div>}
     </div>
   );
@@ -252,7 +233,7 @@ function QuickAdd({onSave,onClose,userName}){
   const [type,setType]=useState("gastos");
   const [d,setD]=useState({fecha:today(),persona:userName,moneda:"ARS"});
   const upd=(k,v)=>setD(p=>({...p,[k]:v}));
-  const cats={ingresos:CAT_INGRESO,gastos:CAT_GASTO,ahorros:CAT_AHORRO,inversiones:CAT_INV};
+  const cats={ingresos:CAT_INGRESO,gastos:CAT_GASTO,ahorros:CAT_AHORRO};
   return(
     <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.7)",zIndex:150,display:"flex",alignItems:"flex-end"}} onClick={onClose}>
       <div onClick={e=>e.stopPropagation()} style={{background:D.surface,borderRadius:"20px 20px 0 0",padding:"20px 16px 36px",width:"100%",border:`1px solid ${D.border}`}} className="slide-in">
@@ -268,9 +249,7 @@ function QuickAdd({onSave,onClose,userName}){
         <input placeholder="Descripción" value={d.titulo||""} onChange={e=>upd("titulo",e.target.value)} style={{marginBottom:10}}/>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
           <input type="number" placeholder="Monto" value={d.monto||""} onChange={e=>upd("monto",e.target.value)}/>
-          <select value={d.moneda} onChange={e=>upd("moneda",e.target.value)}>
-            {MONEDAS.map(m=><option key={m}>{m}</option>)}
-          </select>
+          <select value={d.moneda} onChange={e=>upd("moneda",e.target.value)}>{MONEDAS.map(m=><option key={m}>{m}</option>)}</select>
         </div>
         <select value={d.categoria||""} onChange={e=>upd("categoria",e.target.value)} style={{marginBottom:14}}>
           <option value="">Categoría...</option>
@@ -282,120 +261,195 @@ function QuickAdd({onSave,onClose,userName}){
   );
 }
 
+// ─── LOGIN SCREENS ───────────────────────────────────────────────────────────
+
+function SetupScreen({onDone}){
+  const [username,setUsername]=useState("");
+  const [password,setPassword]=useState("");
+  const [loading,setLoading]=useState(false);
+  const [qr,setQr]=useState(null);
+  const [secret,setSecret]=useState(null);
+  const [error,setError]=useState("");
+
+  const doSetup=async()=>{
+    if(!username||!password){setError("Completá todos los campos");return;}
+    setLoading(true);setError("");
+    const r=await apiAuth({action:"setup",username,password});
+    if(r.error){setError(r.error);setLoading(false);return;}
+    setSecret(r.totpSecret);
+    setQr(r.otpAuthUrl);
+    setLoading(false);
+  };
+
+  if(qr) return(
+    <div style={{maxWidth:420,margin:"0 auto",padding:"2rem",textAlign:"center"}}>
+      <p style={{fontSize:32,marginBottom:8}}>🔐</p>
+      <h2 style={{fontSize:20,fontWeight:700,marginBottom:8}}>Configurá Google Authenticator</h2>
+      <p style={{color:D.textMuted,fontSize:13,marginBottom:20}}>Abrí Google Authenticator en tu celular y escaneá este código QR, o ingresá la clave manual.</p>
+      <div style={{background:D.surface,borderRadius:16,padding:"20px",border:`1px solid ${D.border}`,marginBottom:16}}>
+        <img src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qr)}`} alt="QR" style={{width:200,height:200,borderRadius:8}}/>
+        <p style={{fontSize:12,color:D.textMuted,marginTop:12,marginBottom:4}}>Clave manual:</p>
+        <p style={{fontSize:13,fontWeight:600,letterSpacing:2,color:D.accent,wordBreak:"break-all"}}>{secret}</p>
+      </div>
+      <p style={{fontSize:12,color:D.textMuted,marginBottom:16}}>⚠️ Guardá esta clave en un lugar seguro. La vas a necesitar si perdés el teléfono.</p>
+      <button onClick={onDone} style={{width:"100%",padding:"14px",borderRadius:12,border:"none",background:D.accent,color:"#fff",fontSize:15,fontWeight:600}}>Ya lo configuré → Iniciar sesión</button>
+    </div>
+  );
+
+  return(
+    <div style={{maxWidth:420,margin:"0 auto",padding:"2rem",minHeight:"100vh",display:"flex",flexDirection:"column",justifyContent:"center"}}>
+      <div style={{textAlign:"center",marginBottom:"2rem"}}>
+        <p style={{fontSize:36,marginBottom:8}}>💸</p>
+        <h2 style={{fontSize:22,fontWeight:700,marginBottom:6}}>Crear cuenta</h2>
+        <p style={{color:D.textMuted,fontSize:14}}>Primera vez — configurá tu usuario</p>
+      </div>
+      <div style={{background:D.surface,borderRadius:16,padding:"20px",border:`1px solid ${D.border}`}}>
+        <label style={{display:"block",fontSize:11,color:D.textMuted,marginBottom:4,fontWeight:500,textTransform:"uppercase",letterSpacing:.3}}>Usuario</label>
+        <input style={{marginBottom:14}} placeholder="Ej: jere" value={username} onChange={e=>setUsername(e.target.value)}/>
+        <label style={{display:"block",fontSize:11,color:D.textMuted,marginBottom:4,fontWeight:500,textTransform:"uppercase",letterSpacing:.3}}>Contraseña</label>
+        <input style={{marginBottom:14}} type="password" placeholder="Mínimo 8 caracteres" value={password} onChange={e=>setPassword(e.target.value)}/>
+        {error&&<p style={{fontSize:12,color:D.red,marginBottom:10}}>{error}</p>}
+        <button onClick={doSetup} disabled={loading} style={{width:"100%",padding:"14px",borderRadius:12,border:"none",background:D.accent,color:"#fff",fontSize:15,fontWeight:600}}>{loading?"Configurando...":"Crear cuenta ↗"}</button>
+      </div>
+    </div>
+  );
+}
+
+function LoginScreen({onLogin}){
+  const [username,setUsername]=useState("");
+  const [password,setPassword]=useState("");
+  const [totpCode,setTotpCode]=useState("");
+  const [loading,setLoading]=useState(false);
+  const [error,setError]=useState("");
+
+  const doLogin=async()=>{
+    if(!username||!password||!totpCode){setError("Completá todos los campos");return;}
+    setLoading(true);setError("");
+    const r=await apiAuth({action:"login",username,password,totpCode});
+    if(r.error){setError(r.error);setLoading(false);return;}
+    localStorage.setItem("nf_jwt",r.token);
+    localStorage.setItem("nf_user",r.username);
+    onLogin(r.token,r.username);
+  };
+
+  return(
+    <div style={{maxWidth:420,margin:"0 auto",padding:"2rem",minHeight:"100vh",display:"flex",flexDirection:"column",justifyContent:"center"}}>
+      <div style={{textAlign:"center",marginBottom:"2rem"}}>
+        <p style={{fontSize:36,marginBottom:8}}>💸</p>
+        <h2 style={{fontSize:22,fontWeight:700,marginBottom:6}}>FinanzasApp</h2>
+        <p style={{color:D.textMuted,fontSize:14}}>Iniciá sesión para continuar</p>
+      </div>
+      <div style={{background:D.surface,borderRadius:16,padding:"20px",border:`1px solid ${D.border}`}}>
+        <label style={{display:"block",fontSize:11,color:D.textMuted,marginBottom:4,fontWeight:500,textTransform:"uppercase",letterSpacing:.3}}>Usuario</label>
+        <input style={{marginBottom:12}} placeholder="Tu usuario" value={username} onChange={e=>setUsername(e.target.value)}/>
+        <label style={{display:"block",fontSize:11,color:D.textMuted,marginBottom:4,fontWeight:500,textTransform:"uppercase",letterSpacing:.3}}>Contraseña</label>
+        <input style={{marginBottom:12}} type="password" placeholder="Tu contraseña" value={password} onChange={e=>setPassword(e.target.value)}/>
+        <label style={{display:"block",fontSize:11,color:D.textMuted,marginBottom:4,fontWeight:500,textTransform:"uppercase",letterSpacing:.3}}>Código Google Authenticator</label>
+        <input style={{marginBottom:14}} type="number" placeholder="000000" maxLength={6} value={totpCode} onChange={e=>setTotpCode(e.target.value.slice(0,6))}/>
+        {error&&<p style={{fontSize:12,color:D.red,marginBottom:10}}>{error}</p>}
+        <button onClick={doLogin} disabled={loading} style={{width:"100%",padding:"14px",borderRadius:12,border:"none",background:D.accent,color:"#fff",fontSize:15,fontWeight:600}}>{loading?"Verificando...":"Iniciar sesión ↗"}</button>
+      </div>
+    </div>
+  );
+}
+
+// ─── MAIN APP ────────────────────────────────────────────────────────────────
+
 export default function App(){
+  const [authState,setAuthState]=useState("loading"); // loading | setup | login | app
+  const [token,setToken]=useState("");
+  const [userName,setUserName]=useState("");
   const [tab,setTab]=useState("Inicio");
-  const [token,setToken]=useState(()=>localStorage.getItem("nf_token")||"");
-  const [dbIds,setDbIds]=useState(()=>{try{return JSON.parse(localStorage.getItem("nf_dbs")||"{}")}catch{return{}}});
   const [records,setRecords]=useState({ingresos:[],gastos:[],ahorros:[],proyectos:[],inversiones:[]});
   const [loading,setLoading]=useState(false);
   const [msg,setMsg]=useState({text:"",type:""});
-  const [setupStep,setSetupStep]=useState(()=>localStorage.getItem("nf_token")&&Object.keys(JSON.parse(localStorage.getItem("nf_dbs")||"{}")).length>0?"ready":"token");
   const [period,setPeriod]=useState("mes");
   const [selectedMonth,setSelectedMonth]=useState(thisMonth());
   const [moneda,setMoneda]=useState("ARS");
-  const [userName,setUserName]=useState(()=>localStorage.getItem("nf_user")||"");
   const [chartLoaded,setChartLoaded]=useState(false);
   const [showQuick,setShowQuick]=useState(false);
   const [editRecord,setEditRecord]=useState(null);
   const [editType,setEditType]=useState(null);
-  const [deleteId,setDeleteId]=useState(null);
+  const [deleteInfo,setDeleteInfo]=useState(null);
+  const [showAddUser,setShowAddUser]=useState(false);
+  const [newUser,setNewUser]=useState({username:"",password:""});
+  const [newUserQr,setNewUserQr]=useState(null);
 
   useEffect(()=>{
-    const params=new URLSearchParams(window.location.search);
-    const cfg=params.get("cfg");
-    if(cfg){try{const {t,d,u}=JSON.parse(decodeURIComponent(cfg));if(t&&d){localStorage.setItem("nf_token",t);localStorage.setItem("nf_dbs",JSON.stringify(d));if(u) localStorage.setItem("nf_user",u);window.history.replaceState({},"",window.location.pathname);window.location.reload();}}catch(e){}}
     const style=document.createElement("style");style.textContent=css;document.head.appendChild(style);
-    if(window.Chart){setChartLoaded(true);return;}
-    const s=document.createElement("script");s.src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js";s.onload=()=>setChartLoaded(true);document.head.appendChild(s);
+    if(window.Chart){setChartLoaded(true);}else{const s=document.createElement("script");s.src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js";s.onload=()=>setChartLoaded(true);document.head.appendChild(s);}
+    // Verificar sesión guardada
+    const savedToken=localStorage.getItem("nf_jwt");
+    const savedUser=localStorage.getItem("nf_user");
+    if(savedToken&&savedUser){
+      apiAuth({action:"verify"},savedToken).then(r=>{
+        if(r.success){setToken(savedToken);setUserName(savedUser);setAuthState("app");loadAll(savedToken);}
+        else{localStorage.removeItem("nf_jwt");checkSetup();}
+      }).catch(()=>checkSetup());
+    } else checkSetup();
   },[]);
+
+  const checkSetup=async()=>{
+    const r=await apiAuth({action:"verify"}).catch(()=>({error:true}));
+    // Si el endpoint responde (aunque sea con error de auth), el servidor funciona
+    // Verificamos si hay usuarios creados intentando login con datos vacíos
+    const check=await apiAuth({action:"login",username:"__check__",password:"__check__",totpCode:"000000"});
+    if(check.error==="No hay usuarios configurados") setAuthState("setup");
+    else setAuthState("login");
+  };
+
+  const handleLogin=(t,u)=>{ setToken(t);setUserName(u);setAuthState("app");loadAll(t); };
 
   const showMsg=(text,type="success")=>{setMsg({text,type});setTimeout(()=>setMsg({text:"",type:""}),3000);};
 
-  const createDatabases=async()=>{
-    setLoading(true);showMsg("Conectando con Notion...");
-    try{
-      const search=await notionCall(token,"POST","search",{filter:{value:"page",property:"object"},page_size:1});
-      const parentId=search?.results?.[0]?.id;
-      if(!parentId){showMsg("No se encontró ninguna página en Notion.","error");setLoading(false);return;}
-      const dbs={};
-      const dbDefs=[
-        {key:"ingresos",title:"💰 Ingresos",props:{Título:{title:{}},Monto:{number:{format:"number"}},Moneda:{select:{options:MONEDAS.map(n=>({name:n}))}},Categoría:{select:{options:CAT_INGRESO.map(n=>({name:n}))}},Fecha:{date:{}},Persona:{rich_text:{}},Nota:{rich_text:{}}}},
-        {key:"gastos",title:"💸 Gastos",props:{Título:{title:{}},Monto:{number:{format:"number"}},Moneda:{select:{options:MONEDAS.map(n=>({name:n}))}},Categoría:{select:{options:CAT_GASTO.map(n=>({name:n}))}},Fecha:{date:{}},Persona:{rich_text:{}},Nota:{rich_text:{}}}},
-        {key:"ahorros",title:"🏦 Ahorro",props:{Título:{title:{}},Monto:{number:{}},Moneda:{select:{options:MONEDAS.map(n=>({name:n}))}},Categoría:{select:{options:CAT_AHORRO.map(n=>({name:n}))}},Fecha:{date:{}},Persona:{rich_text:{}},Nota:{rich_text:{}}}},
-        {key:"proyectos",title:"🎯 Proyectos",props:{Título:{title:{}},Meta:{number:{}},Acumulado:{number:{}},Moneda:{select:{options:MONEDAS.map(n=>({name:n}))}},Tipo:{select:{options:[{name:"Individual"},{name:"Grupal"}]}},FechaObjetivo:{date:{}},Nota:{rich_text:{}}}},
-        {key:"inversiones",title:"📈 Inversiones",props:{Título:{title:{}},Monto:{number:{}},Moneda:{select:{options:MONEDAS.map(n=>({name:n}))}},Tipo:{select:{options:CAT_INV.map(n=>({name:n}))}},Fecha:{date:{}},Proyectado:{number:{}},Persona:{rich_text:{}},Nota:{rich_text:{}}}}
-      ];
-      for(const db of dbDefs){showMsg(`Creando ${db.title}...`);const res=await notionCall(token,"POST","databases",{parent:{page_id:parentId},title:[{type:"text",text:{content:db.title}}],properties:db.props});if(res?.id) dbs[db.key]=res.id;}
-      localStorage.setItem("nf_dbs",JSON.stringify(dbs));localStorage.setItem("nf_token",token);setDbIds(dbs);setSetupStep("ready");showMsg("¡Listo! ✓");loadAll(dbs);
-    }catch(e){showMsg("Error al conectar.","error");}
+  const loadAll=async(t=token)=>{
+    setLoading(true);
+    const r=await apiData({action:"getAll"},t);
+    if(r.success) setRecords(r.data);
+    else if(r.error==="No autorizado"){localStorage.removeItem("nf_jwt");setAuthState("login");}
     setLoading(false);
   };
 
-  const loadAll=async(dbs=dbIds)=>{
-    if(!token||!dbs?.ingresos) return;
-    setLoading(true);
-    const keys=["ingresos","gastos","ahorros","proyectos","inversiones"];
-    const results={};
-    for(const k of keys){
-      if(!dbs[k]) continue;
-      const r=await notionCall(token,"POST",`databases/${dbs[k]}/query`,{page_size:200,sorts:[{property:"Fecha",direction:"descending"}]});
-      results[k]=(r?.results||[]).map(p=>{const pr=p.properties;return{id:p.id,titulo:pr.Título?.title?.[0]?.plain_text||"",monto:pr.Monto?.number||0,meta:pr.Meta?.number||0,acumulado:pr.Acumulado?.number||0,proyectado:pr.Proyectado?.number||0,moneda:pr.Moneda?.select?.name||"ARS",categoria:pr.Categoría?.select?.name||pr.Tipo?.select?.name||"",fecha:pr.Fecha?.date?.start||pr.FechaObjetivo?.date?.start||"",persona:pr.Persona?.rich_text?.[0]?.plain_text||"",tipo:pr.Tipo?.select?.name||"",nota:pr.Nota?.rich_text?.[0]?.plain_text||""};});
-    }
-    setRecords(r=>({...r,...results}));setLoading(false);
-  };
-
-  useEffect(()=>{if(setupStep==="ready") loadAll();},[setupStep]);
-
   const addRecord=async(type,data)=>{
-    if(!dbIds[type]) return;
     setLoading(true);
-    const n=v=>v?+v:0;const t=v=>[{type:"text",text:{content:v||""}}];
-    const propMap={
-      ingresos:{Título:{title:t(data.titulo)},Monto:{number:n(data.monto)},Moneda:{select:{name:data.moneda||"ARS"}},Categoría:{select:{name:data.categoria||"Otro"}},Fecha:{date:{start:data.fecha||today()}},Persona:{rich_text:t(data.persona)},Nota:{rich_text:t(data.nota)}},
-      gastos:{Título:{title:t(data.titulo)},Monto:{number:n(data.monto)},Moneda:{select:{name:data.moneda||"ARS"}},Categoría:{select:{name:data.categoria||"Gasto extra"}},Fecha:{date:{start:data.fecha||today()}},Persona:{rich_text:t(data.persona)},Nota:{rich_text:t(data.nota)}},
-      ahorros:{Título:{title:t(data.titulo||"Ahorro")},Monto:{number:n(data.monto)},Moneda:{select:{name:data.moneda||"ARS"}},Categoría:{select:{name:data.categoria||"Ahorro general"}},Fecha:{date:{start:data.fecha||today()}},Persona:{rich_text:t(data.persona)},Nota:{rich_text:t(data.nota)}},
-      proyectos:{Título:{title:t(data.titulo||"Proyecto")},Meta:{number:n(data.meta)},Acumulado:{number:n(data.acumulado)},Moneda:{select:{name:data.moneda||"ARS"}},Tipo:{select:{name:data.tipo||"Grupal"}},FechaObjetivo:{date:{start:data.fecha||today()}},Nota:{rich_text:t(data.nota)}},
-      inversiones:{Título:{title:t(data.titulo)},Monto:{number:n(data.monto)},Moneda:{select:{name:data.moneda||"ARS"}},Tipo:{select:{name:data.tipo||"Otro"}},Fecha:{date:{start:data.fecha||today()}},Proyectado:{number:n(data.proyectado)},Persona:{rich_text:t(data.persona)},Nota:{rich_text:t(data.nota)}}
-    };
-    const res=await notionCall(token,"POST","pages",{parent:{database_id:dbIds[type]},properties:propMap[type]});
-    if(res?.id){showMsg("✓ Guardado");loadAll();}else showMsg("Error al guardar","error");
+    const r=await apiData({action:"add",type,record:{...data,monto:+data.monto||0}},token);
+    if(r.success){showMsg("✓ Guardado");loadAll();}else showMsg("Error al guardar","error");
     setLoading(false);
   };
 
   const saveEdit=async(data)=>{
-    if(!editRecord||!dbIds[editType]) return;
     setLoading(true);
-    const n=v=>v?+v:0;const t=v=>[{type:"text",text:{content:v||""}}];
-    const propMap={
-      ingresos:{Título:{title:t(data.titulo)},Monto:{number:n(data.monto)},Moneda:{select:{name:data.moneda||"ARS"}},Categoría:{select:{name:data.categoria||"Otro"}},Fecha:{date:{start:data.fecha||today()}},Persona:{rich_text:t(data.persona)},Nota:{rich_text:t(data.nota)}},
-      gastos:{Título:{title:t(data.titulo)},Monto:{number:n(data.monto)},Moneda:{select:{name:data.moneda||"ARS"}},Categoría:{select:{name:data.categoria||"Gasto extra"}},Fecha:{date:{start:data.fecha||today()}},Persona:{rich_text:t(data.persona)},Nota:{rich_text:t(data.nota)}},
-      ahorros:{Título:{title:t(data.titulo)},Monto:{number:n(data.monto)},Moneda:{select:{name:data.moneda||"ARS"}},Categoría:{select:{name:data.categoria||"Ahorro general"}},Fecha:{date:{start:data.fecha||today()}},Persona:{rich_text:t(data.persona)},Nota:{rich_text:t(data.nota)}},
-      inversiones:{Título:{title:t(data.titulo)},Monto:{number:n(data.monto)},Moneda:{select:{name:data.moneda||"ARS"}},Tipo:{select:{name:data.tipo||"Otro"}},Fecha:{date:{start:data.fecha||today()}},Proyectado:{number:n(data.proyectado)},Persona:{rich_text:t(data.persona)},Nota:{rich_text:t(data.nota)}}
-    };
-    await notionCall(token,"PATCH",`pages/${editRecord.id}`,{properties:propMap[editType]});
+    await apiData({action:"update",type:editType,id:editRecord.id,record:{...data,monto:+data.monto||0}},token);
     showMsg("✓ Actualizado");setEditRecord(null);setEditType(null);loadAll();setLoading(false);
   };
 
   const confirmDelete=async()=>{
-    if(!deleteId) return;
+    if(!deleteInfo) return;
     setLoading(true);
-    await notionCall(token,"PATCH",`pages/${deleteId}`,{archived:true});
-    showMsg("✓ Eliminado");setDeleteId(null);loadAll();setLoading(false);
+    await apiData({action:"delete",type:deleteInfo.type,id:deleteInfo.id},token);
+    showMsg("✓ Eliminado");setDeleteInfo(null);loadAll();setLoading(false);
   };
 
   const handleEdit=(record,type)=>{setEditRecord(record);setEditType(type);};
-  const handleDelete=(id)=>setDeleteId(id);
+  const handleDelete=(id,type)=>setDeleteInfo({id,type});
+
+  const addSecondUser=async()=>{
+    const r=await apiAuth({action:"addUser",username:newUser.username,password:newUser.password},token);
+    if(r.error){showMsg(r.error,"error");return;}
+    setNewUserQr(r.otpAuthUrl);
+    showMsg("Usuario creado ✓");
+  };
 
   const filterByPeriod=arr=>arr.filter(r=>{
     if(!r.fecha) return false;
-    const fecha=r.fecha.slice(0,10);
-    if(period==="semana") return fecha>=thisWeek();
-    if(period==="mes") return fecha.startsWith(selectedMonth);
-    if(period==="año") return fecha.startsWith(thisYear());
+    const f=r.fecha.slice(0,10);
+    if(period==="semana") return f>=thisWeek();
+    if(period==="mes") return f.startsWith(selectedMonth);
+    if(period==="año") return f.startsWith(thisYear());
     return true;
   }).filter(r=>r.moneda===moneda);
 
-  const fl={ingresos:filterByPeriod(records.ingresos),gastos:filterByPeriod(records.gastos),ahorros:filterByPeriod(records.ahorros),inversiones:filterByPeriod(records.inversiones)};
+  const fl={ingresos:filterByPeriod(records.ingresos||[]),gastos:filterByPeriod(records.gastos||[]),ahorros:filterByPeriod(records.ahorros||[]),inversiones:filterByPeriod(records.inversiones||[])};
   const totalI=fl.ingresos.reduce((s,r)=>s+r.monto,0);
   const totalG=fl.gastos.reduce((s,r)=>s+r.monto,0);
   const totalA=fl.ahorros.reduce((s,r)=>s+r.monto,0);
@@ -403,7 +457,7 @@ export default function App(){
   const gastosPorCat=CAT_GASTO.map(c=>({label:c,value:fl.gastos.filter(r=>r.categoria===c).reduce((s,r)=>s+r.monto,0),color:CAT_COLORS[c]})).filter(x=>x.value>0).sort((a,b)=>b.value-a.value);
   const ingresosPorCat=CAT_INGRESO.map((c,i)=>({label:c,value:fl.ingresos.filter(r=>r.categoria===c).reduce((s,r)=>s+r.monto,0),color:COLORS[i]})).filter(x=>x.value>0);
   const invPorTipo=CAT_INV.map((c,i)=>({label:c,value:fl.inversiones.filter(r=>r.tipo===c).reduce((s,r)=>s+r.monto,0),color:COLORS[i]})).filter(x=>x.value>0);
-  const monthlyData=arr=>{const months={};arr.filter(r=>r.moneda===moneda).forEach(r=>{if(!r.fecha) return;const m=r.fecha.slice(0,7);months[m]=(months[m]||0)+r.monto;});return Object.entries(months).sort().slice(-6).map(([k,v])=>({label:k.slice(5)+"/"+k.slice(2,4),value:v}));};
+  const monthlyData=arr=>{const m={};arr.filter(r=>r.moneda===moneda).forEach(r=>{if(!r.fecha) return;const k=r.fecha.slice(0,7);m[k]=(m[k]||0)+r.monto;});return Object.entries(m).sort().slice(-6).map(([k,v])=>({label:k.slice(5)+"/"+k.slice(2,4),value:v}));};
 
   function AddForm({type,fields}){
     const [d,setD]=useState({fecha:today(),persona:userName,moneda:"ARS"});
@@ -417,9 +471,7 @@ export default function App(){
             {f.options?(<select value={d[f.id]||""} onChange={e=>upd(f.id,e.target.value)}><option value="">Elegir...</option>{f.options.map(o=><option key={o}>{o}</option>)}</select>):(<input type={f.type||"text"} value={d[f.id]||""} onChange={e=>upd(f.id,e.target.value)} placeholder={f.placeholder||""}/>)}
           </div>
         ))}
-        <button onClick={()=>addRecord(type,d)} disabled={loading} style={{width:"100%",padding:"13px",borderRadius:12,border:"none",background:loading?D.surface2:D.accent,color:loading?D.textMuted:"#fff",fontSize:15,fontWeight:600,marginTop:4}}>
-          {loading?"Guardando...":"Guardar ↗"}
-        </button>
+        <button onClick={()=>addRecord(type,d)} disabled={loading} style={{width:"100%",padding:"13px",borderRadius:12,border:"none",background:loading?D.surface2:D.accent,color:loading?D.textMuted:"#fff",fontSize:15,fontWeight:600,marginTop:4}}>{loading?"Guardando...":"Guardar ↗"}</button>
       </div>
     );
   }
@@ -428,11 +480,7 @@ export default function App(){
     return(
       <div style={{margin:"12px 0"}}>
         <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center",marginBottom:8}}>
-          {["semana","mes","año","todo"].map(p=>(
-            <button key={p} onClick={()=>setPeriod(p)} style={{padding:"6px 14px",borderRadius:20,border:`1px solid ${period===p?D.accent:D.border}`,background:period===p?D.accent+"22":D.surface,color:period===p?D.accent:D.textMuted,fontSize:12,cursor:"pointer",fontWeight:period===p?600:400}}>
-              {p.charAt(0).toUpperCase()+p.slice(1)}
-            </button>
-          ))}
+          {["semana","mes","año","todo"].map(p=>(<button key={p} onClick={()=>setPeriod(p)} style={{padding:"6px 14px",borderRadius:20,border:`1px solid ${period===p?D.accent:D.border}`,background:period===p?D.accent+"22":D.surface,color:period===p?D.accent:D.textMuted,fontSize:12,cursor:"pointer",fontWeight:period===p?600:400}}>{p.charAt(0).toUpperCase()+p.slice(1)}</button>))}
           <div style={{marginLeft:"auto",display:"flex",gap:4}}>
             {MONEDAS.map(m=>(<button key={m} onClick={()=>setMoneda(m)} style={{padding:"6px 12px",borderRadius:20,border:`1px solid ${moneda===m?D.yellow:D.border}`,background:moneda===m?D.yellow+"22":D.surface,color:moneda===m?D.yellow:D.textMuted,fontSize:12,cursor:"pointer",fontWeight:moneda===m?600:400}}>{m}</button>))}
           </div>
@@ -446,20 +494,15 @@ export default function App(){
     return(<div style={{background:D.surface,borderRadius:14,padding:"14px",border:`1px solid ${D.border}`}}><p style={{fontSize:11,color:D.textMuted,margin:"0 0 6px",fontWeight:500,textTransform:"uppercase",letterSpacing:.5}}>{label}</p><p style={{fontSize:18,fontWeight:700,margin:0,color:color||D.text}}>{fmtShort(value,moneda)}</p>{sub&&<p style={{fontSize:11,color:D.textMuted,margin:"4px 0 0"}}>{sub}</p>}</div>);
   }
 
-  if(setupStep!=="ready") return(
-    <div style={{maxWidth:420,margin:"0 auto",padding:"2rem",minHeight:"100vh",display:"flex",flexDirection:"column",justifyContent:"center"}}>
-      <div style={{textAlign:"center",marginBottom:"2rem"}}><p style={{fontSize:36,marginBottom:8}}>💸</p><h2 style={{fontSize:22,fontWeight:700,marginBottom:6}}>FinanzasApp</h2><p style={{color:D.textMuted,fontSize:14}}>Gestión financiera compartida</p></div>
-      <div style={{background:D.surface,borderRadius:16,padding:"20px",border:`1px solid ${D.border}`}}>
-        <label style={{display:"block",fontSize:11,color:D.textMuted,marginBottom:4,fontWeight:500,textTransform:"uppercase",letterSpacing:.3}}>Tu nombre</label>
-        <input style={{marginBottom:14}} placeholder="Ej: Lucía" value={userName} onChange={e=>{setUserName(e.target.value);localStorage.setItem("nf_user",e.target.value);}}/>
-        <label style={{display:"block",fontSize:11,color:D.textMuted,marginBottom:4,fontWeight:500,textTransform:"uppercase",letterSpacing:.3}}>Token de Notion</label>
-        <input style={{marginBottom:6}} type="password" placeholder="secret_..." value={token} onChange={e=>setToken(e.target.value)}/>
-        <p style={{fontSize:11,color:D.textMuted,marginBottom:14}}>Obtené el token en <a href="https://notion.so/my-integrations" target="_blank" rel="noreferrer" style={{color:D.accent}}>notion.so/my-integrations</a></p>
-        <button onClick={createDatabases} disabled={!token||loading} style={{width:"100%",padding:"14px",borderRadius:12,border:"none",background:token?D.accent:D.surface2,color:token?"#fff":D.textMuted,fontSize:15,fontWeight:600}}>{loading?"Configurando...":"Conectar y crear bases ↗"}</button>
-        {msg.text&&<p style={{fontSize:12,color:msg.type==="error"?D.red:D.green,marginTop:10,textAlign:"center"}}>{msg.text}</p>}
-      </div>
+  if(authState==="loading") return(
+    <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:12}}>
+      <p style={{fontSize:36}}>💸</p>
+      <p style={{color:D.textMuted,fontSize:14}}>Cargando...</p>
     </div>
   );
+
+  if(authState==="setup") return <SetupScreen onDone={()=>setAuthState("login")}/>;
+  if(authState==="login") return <LoginScreen onLogin={handleLogin}/>;
 
   return(
     <div style={{maxWidth:900,margin:"0 auto",paddingBottom:80,minHeight:"100vh",background:D.bg}}>
@@ -468,6 +511,7 @@ export default function App(){
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"14px 16px",borderBottom:`1px solid ${D.border}`,position:"sticky",top:0,background:D.bg,zIndex:50}}>
         <h3 style={{margin:0,fontSize:16,fontWeight:600}}>{ICONS[tab]} {tab}</h3>
         <div style={{display:"flex",gap:8,alignItems:"center"}}>
+          <span style={{fontSize:12,color:D.textMuted}}>👤 {userName}</span>
           <button onClick={()=>setShowQuick(true)} style={{background:D.accent,border:"none",borderRadius:20,padding:"6px 14px",color:"#fff",fontSize:13,fontWeight:600}}>+ Agregar</button>
           <button onClick={()=>loadAll()} style={{background:D.surface,border:`1px solid ${D.border}`,borderRadius:8,padding:"6px 10px",color:D.textMuted,fontSize:13}} disabled={loading}>{loading?"⟳":"↻"}</button>
         </div>
@@ -485,23 +529,22 @@ export default function App(){
           </div>
           {chartLoaded&&gastosPorCat.length>0&&<><p style={{fontSize:12,fontWeight:600,color:D.textMuted,textTransform:"uppercase",letterSpacing:1,margin:"20px 0 10px"}}>Gastos por categoría</p><div style={{background:D.surface,borderRadius:16,padding:"14px",border:`1px solid ${D.border}`}}><PieChart data={gastosPorCat}/></div></>}
           <p style={{fontSize:12,fontWeight:600,color:D.textMuted,textTransform:"uppercase",letterSpacing:1,margin:"20px 0 10px"}}>Proyectos activos</p>
-          {records.proyectos.length===0&&<p style={{color:D.textMuted,fontSize:13,textAlign:"center",padding:"1rem"}}>Sin proyectos</p>}
-          {records.proyectos.slice(0,3).map(p=>{const pct=p.meta>0?Math.min(100,Math.round(p.acumulado/p.meta*100)):0;return<div key={p.id} style={{background:D.surface,borderRadius:14,padding:"14px",marginBottom:10,border:`1px solid ${D.border}`}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:10}}><p style={{fontWeight:600,margin:0}}>{p.titulo}</p><span style={{fontSize:11,background:D.accent+"22",color:D.accent,padding:"3px 10px",borderRadius:20,fontWeight:500}}>{p.tipo||"Grupal"}</span></div><div style={{background:D.surface2,borderRadius:6,height:8,marginBottom:6}}><div style={{width:`${pct}%`,height:"100%",background:`linear-gradient(90deg,${D.accent},${D.purple})`,borderRadius:6,transition:"width .5s ease"}}/></div><div style={{display:"flex",justifyContent:"space-between",fontSize:12,color:D.textMuted}}><span>{fmt(p.acumulado,p.moneda)}</span><span style={{fontWeight:600,color:D.accent}}>{pct}% — Meta: {fmt(p.meta,p.moneda)}</span></div></div>;})}
+          {(records.proyectos||[]).slice(0,3).map(p=>{const pct=p.meta>0?Math.min(100,Math.round(p.acumulado/p.meta*100)):0;return<div key={p.id} style={{background:D.surface,borderRadius:14,padding:"14px",marginBottom:10,border:`1px solid ${D.border}`}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:10}}><p style={{fontWeight:600,margin:0}}>{p.titulo}</p><span style={{fontSize:11,background:D.accent+"22",color:D.accent,padding:"3px 10px",borderRadius:20,fontWeight:500}}>{p.tipo||"Grupal"}</span></div><div style={{background:D.surface2,borderRadius:6,height:8,marginBottom:6}}><div style={{width:`${pct}%`,height:"100%",background:`linear-gradient(90deg,${D.accent},${D.purple})`,borderRadius:6}}/></div><div style={{display:"flex",justifyContent:"space-between",fontSize:12,color:D.textMuted}}><span>{fmt(p.acumulado,p.moneda)}</span><span style={{fontWeight:600,color:D.accent}}>{pct}% — Meta: {fmt(p.meta,p.moneda)}</span></div></div>;})}
         </>}
 
         {tab==="Ingresos"&&<>
-          <AddForm type="ingresos" fields={[{id:"titulo",label:"Descripción",placeholder:"Ej: Sueldo enero"},{id:"monto",label:"Monto",type:"number"},{id:"moneda",label:"Moneda",options:MONEDAS},{id:"categoria",label:"Categoría",options:CAT_INGRESO},{id:"persona",label:"¿Quién?"},{id:"fecha",label:"Fecha",type:"date"},{id:"nota",label:"Nota"}]}/>
+          <AddForm type="ingresos" fields={[{id:"titulo",label:"Descripción",placeholder:"Ej: Sueldo"},{id:"monto",label:"Monto",type:"number"},{id:"moneda",label:"Moneda",options:MONEDAS},{id:"categoria",label:"Categoría",options:CAT_INGRESO},{id:"persona",label:"¿Quién?"},{id:"fecha",label:"Fecha",type:"date"},{id:"nota",label:"Nota"}]}/>
           <PeriodFilter/>
-          {chartLoaded&&fl.ingresos.length>0&&<><div style={{background:D.surface,borderRadius:16,padding:"14px",border:`1px solid ${D.border}`,marginBottom:14}}><PieChart data={ingresosPorCat}/></div><div style={{background:D.surface,borderRadius:16,padding:"14px",border:`1px solid ${D.border}`,marginBottom:14}}><LineChart data={monthlyData(records.ingresos)} color={D.green} moneda={moneda}/></div></>}
+          {chartLoaded&&fl.ingresos.length>0&&<><div style={{background:D.surface,borderRadius:16,padding:"14px",border:`1px solid ${D.border}`,marginBottom:14}}><PieChart data={ingresosPorCat}/></div><div style={{background:D.surface,borderRadius:16,padding:"14px",border:`1px solid ${D.border}`,marginBottom:14}}><LineChart data={monthlyData(records.ingresos||[])} color={D.green} moneda={moneda}/></div></>}
           <p style={{fontSize:12,fontWeight:600,color:D.textMuted,textTransform:"uppercase",letterSpacing:1,margin:"16px 0 8px"}}>Registros</p>
           {fl.ingresos.length===0&&<p style={{color:D.textMuted,fontSize:13,textAlign:"center",padding:"1rem"}}>Sin registros</p>}
           {fl.ingresos.map(r=><SwipeRow key={r.id} record={r} type="ingresos" onEdit={handleEdit} onDelete={handleDelete} color={D.green}/>)}
         </>}
 
         {tab==="Gastos"&&<>
-          <AddForm type="gastos" fields={[{id:"titulo",label:"Descripción",placeholder:"Ej: Super semana"},{id:"monto",label:"Monto",type:"number"},{id:"moneda",label:"Moneda",options:MONEDAS},{id:"categoria",label:"Categoría",options:CAT_GASTO},{id:"persona",label:"¿Quién pagó?"},{id:"fecha",label:"Fecha",type:"date"},{id:"nota",label:"Nota"}]}/>
+          <AddForm type="gastos" fields={[{id:"titulo",label:"Descripción",placeholder:"Ej: Supermercado"},{id:"monto",label:"Monto",type:"number"},{id:"moneda",label:"Moneda",options:MONEDAS},{id:"categoria",label:"Categoría",options:CAT_GASTO},{id:"persona",label:"¿Quién pagó?"},{id:"fecha",label:"Fecha",type:"date"},{id:"nota",label:"Nota"}]}/>
           <PeriodFilter/>
-          {chartLoaded&&fl.gastos.length>0&&<><div style={{background:D.surface,borderRadius:16,padding:"14px",border:`1px solid ${D.border}`,marginBottom:14}}><PieChart data={gastosPorCat}/></div><div style={{background:D.surface,borderRadius:16,padding:"14px",border:`1px solid ${D.border}`,marginBottom:14}}><BarChart data={monthlyData(records.gastos)} color={D.red} moneda={moneda}/></div></>}
+          {chartLoaded&&fl.gastos.length>0&&<><div style={{background:D.surface,borderRadius:16,padding:"14px",border:`1px solid ${D.border}`,marginBottom:14}}><PieChart data={gastosPorCat}/></div><div style={{background:D.surface,borderRadius:16,padding:"14px",border:`1px solid ${D.border}`,marginBottom:14}}><BarChart data={monthlyData(records.gastos||[])} color={D.red} moneda={moneda}/></div></>}
           <p style={{fontSize:12,fontWeight:600,color:D.textMuted,textTransform:"uppercase",letterSpacing:1,margin:"16px 0 8px"}}>Por categoría</p>
           {CAT_GASTO.map(c=><CatAccordion key={c} title={c} color={CAT_COLORS[c]||D.accent} items={fl.gastos.filter(r=>r.categoria===c)} type="gastos" onEdit={handleEdit} onDelete={handleDelete}/>)}
         </>}
@@ -510,55 +553,58 @@ export default function App(){
           <AddForm type="ahorros" fields={[{id:"titulo",label:"Descripción"},{id:"monto",label:"Monto",type:"number"},{id:"moneda",label:"Moneda",options:MONEDAS},{id:"categoria",label:"Categoría",options:CAT_AHORRO},{id:"persona",label:"¿Quién?"},{id:"fecha",label:"Fecha",type:"date"},{id:"nota",label:"Nota"}]}/>
           <PeriodFilter/>
           <div style={{background:D.surface,borderRadius:14,padding:"14px",marginBottom:14,border:`1px solid ${D.border}`,textAlign:"center"}}><p style={{fontSize:11,color:D.textMuted,margin:"0 0 6px",textTransform:"uppercase",letterSpacing:.5}}>Total ahorrado</p><p style={{fontSize:28,fontWeight:700,color:D.accent,margin:0}}>{fmt(totalA,moneda)}</p></div>
-          {chartLoaded&&fl.ahorros.length>0&&<div style={{background:D.surface,borderRadius:16,padding:"14px",border:`1px solid ${D.border}`,marginBottom:14}}><LineChart data={monthlyData(records.ahorros)} color={D.accent} moneda={moneda}/></div>}
-          <p style={{fontSize:12,fontWeight:600,color:D.textMuted,textTransform:"uppercase",letterSpacing:1,margin:"16px 0 8px"}}>Registros</p>
+          {chartLoaded&&fl.ahorros.length>0&&<div style={{background:D.surface,borderRadius:16,padding:"14px",border:`1px solid ${D.border}`,marginBottom:14}}><LineChart data={monthlyData(records.ahorros||[])} color={D.accent} moneda={moneda}/></div>}
           {fl.ahorros.map(r=><SwipeRow key={r.id} record={r} type="ahorros" onEdit={handleEdit} onDelete={handleDelete} color={D.accent}/>)}
         </>}
 
         {tab==="Proyectos"&&<>
           <AddForm type="proyectos" fields={[{id:"titulo",label:"Nombre"},{id:"meta",label:"Meta",type:"number"},{id:"acumulado",label:"Acumulado",type:"number"},{id:"moneda",label:"Moneda",options:MONEDAS},{id:"tipo",label:"Tipo",options:["Individual","Grupal"]},{id:"fecha",label:"Fecha objetivo",type:"date"},{id:"nota",label:"Nota"}]}/>
-          {records.proyectos.map(p=>{const pct=p.meta>0?Math.min(100,Math.round(p.acumulado/p.meta*100)):0;const remaining=p.meta-p.acumulado;return<div key={p.id} style={{background:D.surface,borderRadius:16,padding:"16px",marginBottom:12,border:`1px solid ${D.border}`}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12}}><div><p style={{fontWeight:600,fontSize:15,margin:"0 0 4px"}}>{p.titulo}</p><span style={{fontSize:11,background:D.accent+"22",color:D.accent,padding:"3px 10px",borderRadius:20,fontWeight:500}}>{p.tipo||"Grupal"}</span></div><span style={{fontWeight:700,fontSize:22,color:pct>=100?D.green:D.accent}}>{pct}%</span></div><div style={{background:D.surface2,borderRadius:8,height:10,marginBottom:8}}><div style={{width:`${pct}%`,height:"100%",background:`linear-gradient(90deg,${D.accent},${D.purple})`,borderRadius:8,transition:"width .5s ease"}}/></div><div style={{display:"flex",justifyContent:"space-between",fontSize:12}}><span style={{color:D.textMuted}}>Acumulado: <span style={{color:D.text,fontWeight:500}}>{fmt(p.acumulado,p.moneda)}</span></span><span style={{color:D.textMuted}}>Falta: <span style={{color:D.red,fontWeight:500}}>{fmt(remaining>0?remaining:0,p.moneda)}</span></span></div>{p.fecha&&<p style={{fontSize:11,color:D.textMuted,margin:"6px 0 0"}}>📅 {p.fecha}</p>}</div>;})}
+          {(records.proyectos||[]).map(p=>{const pct=p.meta>0?Math.min(100,Math.round(p.acumulado/p.meta*100)):0;const rem=p.meta-p.acumulado;return<div key={p.id} style={{background:D.surface,borderRadius:16,padding:"16px",marginBottom:12,border:`1px solid ${D.border}`}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12}}><div><p style={{fontWeight:600,fontSize:15,margin:"0 0 4px"}}>{p.titulo}</p><span style={{fontSize:11,background:D.accent+"22",color:D.accent,padding:"3px 10px",borderRadius:20,fontWeight:500}}>{p.tipo||"Grupal"}</span></div><span style={{fontWeight:700,fontSize:22,color:pct>=100?D.green:D.accent}}>{pct}%</span></div><div style={{background:D.surface2,borderRadius:8,height:10,marginBottom:8}}><div style={{width:`${pct}%`,height:"100%",background:`linear-gradient(90deg,${D.accent},${D.purple})`,borderRadius:8}}/></div><div style={{display:"flex",justifyContent:"space-between",fontSize:12}}><span style={{color:D.textMuted}}>Acumulado: <span style={{color:D.text,fontWeight:500}}>{fmt(p.acumulado,p.moneda)}</span></span><span style={{color:D.textMuted}}>Falta: <span style={{color:D.red,fontWeight:500}}>{fmt(rem>0?rem:0,p.moneda)}</span></span></div>{p.fecha&&<p style={{fontSize:11,color:D.textMuted,margin:"6px 0 0"}}>📅 {p.fecha}</p>}</div>;})}
         </>}
 
         {tab==="Inversiones"&&<>
           <AddForm type="inversiones" fields={[{id:"titulo",label:"Descripción"},{id:"monto",label:"Monto",type:"number"},{id:"moneda",label:"Moneda",options:MONEDAS},{id:"tipo",label:"Tipo",options:CAT_INV},{id:"proyectado",label:"Retorno proyectado",type:"number"},{id:"persona",label:"¿Quién?"},{id:"fecha",label:"Fecha",type:"date"},{id:"nota",label:"Nota"}]}/>
           <PeriodFilter/>
           {chartLoaded&&invPorTipo.length>0&&<div style={{background:D.surface,borderRadius:16,padding:"14px",border:`1px solid ${D.border}`,marginBottom:14}}><PieChart data={invPorTipo}/></div>}
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:14}}><StatCard label="Invertido" value={fl.inversiones.reduce((s,r)=>s+r.monto,0)} color={D.purple} moneda={moneda}/><StatCard label="Proyectado" value={fl.inversiones.reduce((s,r)=>s+r.proyectado,0)} color={D.green} moneda={moneda}/></div>
-          <p style={{fontSize:12,fontWeight:600,color:D.textMuted,textTransform:"uppercase",letterSpacing:1,margin:"16px 0 8px"}}>Por tipo</p>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:14}}><StatCard label="Invertido" value={fl.inversiones.reduce((s,r)=>s+r.monto,0)} color={D.purple} moneda={moneda}/><StatCard label="Proyectado" value={fl.inversiones.reduce((s,r)=>s+(r.proyectado||0),0)} color={D.green} moneda={moneda}/></div>
           {CAT_INV.map((c,i)=><CatAccordion key={c} title={c} color={COLORS[i%COLORS.length]} items={fl.inversiones.filter(r=>r.tipo===c)} type="inversiones" onEdit={handleEdit} onDelete={handleDelete}/>)}
         </>}
 
         {tab==="Reportes"&&<>
           <PeriodFilter/>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:4}}>
-            <StatCard label="Ingresos" value={records.ingresos.filter(r=>r.moneda===moneda).reduce((s,r)=>s+r.monto,0)} color={D.green} moneda={moneda} sub="historial"/>
-            <StatCard label="Gastos" value={records.gastos.filter(r=>r.moneda===moneda).reduce((s,r)=>s+r.monto,0)} color={D.red} moneda={moneda} sub="historial"/>
-            <StatCard label="Ahorrado" value={records.ahorros.filter(r=>r.moneda===moneda).reduce((s,r)=>s+r.monto,0)} color={D.accent} moneda={moneda} sub="historial"/>
-            <StatCard label="Invertido" value={records.inversiones.filter(r=>r.moneda===moneda).reduce((s,r)=>s+r.monto,0)} color={D.purple} moneda={moneda} sub="historial"/>
+            <StatCard label="Ingresos" value={(records.ingresos||[]).filter(r=>r.moneda===moneda).reduce((s,r)=>s+r.monto,0)} color={D.green} moneda={moneda} sub="historial"/>
+            <StatCard label="Gastos" value={(records.gastos||[]).filter(r=>r.moneda===moneda).reduce((s,r)=>s+r.monto,0)} color={D.red} moneda={moneda} sub="historial"/>
+            <StatCard label="Ahorrado" value={(records.ahorros||[]).filter(r=>r.moneda===moneda).reduce((s,r)=>s+r.monto,0)} color={D.accent} moneda={moneda} sub="historial"/>
+            <StatCard label="Invertido" value={(records.inversiones||[]).filter(r=>r.moneda===moneda).reduce((s,r)=>s+r.monto,0)} color={D.purple} moneda={moneda} sub="historial"/>
           </div>
-          {chartLoaded&&<><p style={{fontSize:12,fontWeight:600,color:D.textMuted,textTransform:"uppercase",letterSpacing:1,margin:"20px 0 10px"}}>Ingresos vs Gastos</p><div style={{background:D.surface,borderRadius:16,padding:"14px",border:`1px solid ${D.border}`,marginBottom:14}}><BarChart data={monthlyData(records.ingresos)} color={D.green} moneda={moneda}/></div><p style={{fontSize:12,fontWeight:600,color:D.textMuted,textTransform:"uppercase",letterSpacing:1,margin:"16px 0 10px"}}>Distribución de gastos</p><div style={{background:D.surface,borderRadius:16,padding:"14px",border:`1px solid ${D.border}`,marginBottom:14}}><PieChart data={CAT_GASTO.map(c=>({label:c,value:records.gastos.filter(r=>r.categoria===c&&r.moneda===moneda).reduce((s,r)=>s+r.monto,0),color:CAT_COLORS[c]})).filter(x=>x.value>0)}/></div></>}
+          {chartLoaded&&<><p style={{fontSize:12,fontWeight:600,color:D.textMuted,textTransform:"uppercase",letterSpacing:1,margin:"20px 0 10px"}}>Ingresos vs Gastos</p><div style={{background:D.surface,borderRadius:16,padding:"14px",border:`1px solid ${D.border}`,marginBottom:14}}><BarChart data={monthlyData(records.ingresos||[])} color={D.green} moneda={moneda}/></div><p style={{fontSize:12,fontWeight:600,color:D.textMuted,textTransform:"uppercase",letterSpacing:1,margin:"16px 0 10px"}}>Distribución de gastos</p><div style={{background:D.surface,borderRadius:16,padding:"14px",border:`1px solid ${D.border}`,marginBottom:14}}><PieChart data={CAT_GASTO.map(c=>({label:c,value:(records.gastos||[]).filter(r=>r.categoria===c&&r.moneda===moneda).reduce((s,r)=>s+r.monto,0),color:CAT_COLORS[c]})).filter(x=>x.value>0)}/></div></>}
         </>}
 
         {tab==="Config"&&<>
           <div style={{background:D.surface,borderRadius:16,padding:"16px",marginTop:16,border:`1px solid ${D.border}`,marginBottom:12}}>
-            <p style={{fontWeight:600,marginBottom:12}}>Tu perfil</p>
-            <label style={{fontSize:11,color:D.textMuted,display:"block",marginBottom:4,textTransform:"uppercase",letterSpacing:.3}}>Nombre</label>
-            <input value={userName} onChange={e=>{setUserName(e.target.value);localStorage.setItem("nf_user",e.target.value);}}/>
+            <p style={{fontWeight:600,marginBottom:4}}>Sesión activa</p>
+            <p style={{fontSize:13,color:D.textMuted,marginBottom:12}}>Usuario: <span style={{color:D.text,fontWeight:500}}>{userName}</span></p>
+            <button onClick={()=>{localStorage.removeItem("nf_jwt");localStorage.removeItem("nf_user");setAuthState("login");}} style={{width:"100%",padding:"12px",borderRadius:10,border:`1px solid ${D.red}44`,background:D.red+"11",color:D.red,fontSize:14,fontWeight:500}}>Cerrar sesión</button>
           </div>
-          <div style={{background:D.surface,borderRadius:16,padding:"16px",border:`1px solid ${D.border}`}}>
-            <p style={{fontWeight:600,marginBottom:12}}>Notion</p>
-            <p style={{fontSize:13,color:D.textMuted,marginBottom:12}}>Token: ●●●●{token.slice(-4)}</p>
-            <button onClick={()=>{const cfg=encodeURIComponent(JSON.stringify({t:token,d:dbIds,u:userName}));const url=`${window.location.origin}?cfg=${cfg}`;prompt("Copiá este link y abrilo en el celular:",url);}} style={{width:"100%",padding:"12px",borderRadius:10,border:`1px solid ${D.accent}44`,background:D.accent+"11",color:D.accent,fontSize:14,fontWeight:500,marginBottom:8}}>📱 Exportar al celular</button>
-            <button onClick={()=>loadAll()} disabled={loading} style={{width:"100%",padding:"12px",borderRadius:10,border:`1px solid ${D.border}`,background:D.surface2,color:D.text,fontSize:14,fontWeight:500,marginBottom:8}}>{loading?"Sincronizando...":"↻ Sincronizar"}</button>
-            <button onClick={()=>{localStorage.clear();window.location.reload();}} style={{width:"100%",padding:"12px",borderRadius:10,border:`1px solid ${D.red}44`,background:D.red+"11",color:D.red,fontSize:14,fontWeight:500}}>Desconectar</button>
+          <div style={{background:D.surface,borderRadius:16,padding:"16px",border:`1px solid ${D.border}`,marginBottom:12}}>
+            <p style={{fontWeight:600,marginBottom:12}}>Agregar usuario (tu pareja)</p>
+            {!newUserQr?<>
+              <input placeholder="Usuario" value={newUser.username} onChange={e=>setNewUser(p=>({...p,username:e.target.value}))} style={{marginBottom:10}}/>
+              <input type="password" placeholder="Contraseña" value={newUser.password} onChange={e=>setNewUser(p=>({...p,password:e.target.value}))} style={{marginBottom:10}}/>
+              <button onClick={addSecondUser} style={{width:"100%",padding:"12px",borderRadius:10,border:`1px solid ${D.accent}44`,background:D.accent+"11",color:D.accent,fontSize:14,fontWeight:500}}>Crear usuario ↗</button>
+            </>:<div style={{textAlign:"center"}}>
+              <p style={{fontSize:13,color:D.textMuted,marginBottom:12}}>Que tu pareja escanee este QR con Google Authenticator:</p>
+              <img src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(newUserQr)}`} alt="QR" style={{width:180,borderRadius:8}}/>
+              <button onClick={()=>{setNewUserQr(null);setNewUser({username:"",password:""}); }} style={{width:"100%",marginTop:12,padding:"10px",borderRadius:10,border:`1px solid ${D.border}`,background:D.surface2,color:D.textMuted,fontSize:13}}>Listo</button>
+            </div>}
           </div>
         </>}
       </div>
 
       {showQuick&&<QuickAdd onSave={addRecord} onClose={()=>setShowQuick(false)} userName={userName}/>}
       {editRecord&&editType&&<EditModal record={editRecord} type={editType} onSave={saveEdit} onClose={()=>{setEditRecord(null);setEditType(null);}}/>}
-      {deleteId&&<ConfirmModal message="Esta acción no se puede deshacer." onConfirm={confirmDelete} onCancel={()=>setDeleteId(null)}/>}
+      {deleteInfo&&<ConfirmModal onConfirm={confirmDelete} onCancel={()=>setDeleteInfo(null)}/>}
 
       <nav style={{position:"fixed",bottom:0,left:0,right:0,background:D.surface,borderTop:`1px solid ${D.border}`,display:"flex",justifyContent:"space-around",padding:"6px 0",zIndex:100}}>
         {TABS.map(t=>(<button key={t} onClick={()=>setTab(t)} style={{background:"none",border:"none",padding:"4px 2px",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:2,color:tab===t?D.accent:D.textMuted,fontSize:9,minWidth:36,fontWeight:tab===t?600:400}}><span style={{fontSize:15}}>{ICONS[t]}</span><span>{t}</span></button>))}
