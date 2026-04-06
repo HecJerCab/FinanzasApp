@@ -9,7 +9,12 @@ const JWT_SECRET = process.env.JWT_SECRET || "finanzas-secret-2026";
 async function kvGet(key) {
   const r = await fetch(`${KV_URL}/get/${key}`, { headers: { Authorization: `Bearer ${KV_TOKEN}` } });
   const d = await r.json();
-  return d.result ? JSON.parse(d.result) : null;
+  if (!d.result) return null;
+  let val = d.result;
+  // Desempaquetar doble stringify si es necesario
+  if (typeof val === "string") { try { val = JSON.parse(val); } catch {} }
+  if (typeof val === "string") { try { val = JSON.parse(val); } catch {} }
+  return val;
 }
 
 function base32Decode(str) {

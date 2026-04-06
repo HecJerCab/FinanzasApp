@@ -321,6 +321,7 @@ function LoginScreen({onLogin}){
   const [totpCode,setTotpCode]=useState("");
   const [loading,setLoading]=useState(false);
   const [error,setError]=useState("");
+  const [showPass,setShowPass]=useState(false);
 
   const doLogin=async()=>{
     if(!username||!password||!totpCode){setError("Completá todos los campos");return;}
@@ -343,10 +344,13 @@ function LoginScreen({onLogin}){
         <label style={{display:"block",fontSize:11,color:D.textMuted,marginBottom:4,fontWeight:500,textTransform:"uppercase",letterSpacing:.3}}>Usuario</label>
         <input style={{marginBottom:12}} placeholder="Tu usuario" value={username} onChange={e=>setUsername(e.target.value)}/>
         <label style={{display:"block",fontSize:11,color:D.textMuted,marginBottom:4,fontWeight:500,textTransform:"uppercase",letterSpacing:.3}}>Contraseña</label>
-        <input style={{marginBottom:12}} type="password" placeholder="Tu contraseña" value={password} onChange={e=>setPassword(e.target.value)}/>
+        <div style={{position:"relative",marginBottom:12}}>
+          <input type={showPass?"text":"password"} placeholder="Tu contraseña" value={password} onChange={e=>setPassword(e.target.value)} style={{paddingRight:44}}/>
+          <button onClick={()=>setShowPass(p=>!p)} style={{position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",color:D.textMuted,fontSize:18,padding:0,cursor:"pointer"}}>{showPass?"🙈":"👁️"}</button>
+        </div>
         <label style={{display:"block",fontSize:11,color:D.textMuted,marginBottom:4,fontWeight:500,textTransform:"uppercase",letterSpacing:.3}}>Código Google Authenticator</label>
-        <input style={{marginBottom:14}} type="number" placeholder="000000" maxLength={6} value={totpCode} onChange={e=>setTotpCode(e.target.value.slice(0,6))}/>
-        {error&&<p style={{fontSize:12,color:D.red,marginBottom:10}}>{error}</p>}
+        <input style={{marginBottom:14}} type="number" placeholder="000000" value={totpCode} onChange={e=>setTotpCode(e.target.value.slice(0,6))}/>
+        {error&&<p style={{fontSize:12,color:D.red,marginBottom:10,fontWeight:500}}>{error}</p>}
         <button onClick={doLogin} disabled={loading} style={{width:"100%",padding:"14px",borderRadius:12,border:"none",background:D.accent,color:"#fff",fontSize:15,fontWeight:600}}>{loading?"Verificando...":"Iniciar sesión ↗"}</button>
       </div>
     </div>
