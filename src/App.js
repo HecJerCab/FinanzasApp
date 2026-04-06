@@ -359,6 +359,48 @@ function LoginScreen({onLogin}){
 
 // ─── MAIN APP ────────────────────────────────────────────────────────────────
 
+function ProyectoSwipe({proyecto, onEdit, onDelete, children}){
+  const [offset,setOffset]=useState(0);
+  const [desktop,setDesktop]=useState(isDesktop());
+  const startX=useRef(null);
+  const isDragging=useRef(false);
+  useEffect(()=>{const h=()=>setDesktop(isDesktop());window.addEventListener("resize",h);return()=>window.removeEventListener("resize",h);},[]);
+
+  if(desktop) return(
+    <div>
+      {children}
+      <div style={{display:"flex",gap:8,padding:"0 16px 16px"}}>
+        <button onClick={onEdit} style={{flex:1,padding:"9px",borderRadius:10,border:`1px solid ${D.accent}44`,background:D.accent+"11",color:D.accent,fontSize:13,fontWeight:500}}>✏️ Editar</button>
+        <button onClick={onDelete} style={{flex:1,padding:"9px",borderRadius:10,border:`1px solid ${D.red}44`,background:D.red+"11",color:D.red,fontSize:13,fontWeight:500}}>🗑️ Eliminar</button>
+      </div>
+    </div>
+  );
+
+  const onTouchStart=e=>{startX.current=e.touches[0].clientX;isDragging.current=false;};
+  const onTouchMove=e=>{
+    if(startX.current===null) return;
+    const dx=e.touches[0].clientX-startX.current;
+    if(Math.abs(dx)>8) isDragging.current=true;
+    if(dx<0) setOffset(Math.max(dx,-130));
+    else if(offset<0) setOffset(Math.min(0,offset+(dx*0.3)));
+  };
+  const onTouchEnd=()=>{if(offset<-50) setOffset(-130);else setOffset(0);startX.current=null;};
+
+  return(
+    <div style={{position:"relative",overflow:"hidden"}}>
+      <div style={{position:"absolute",right:0,top:0,bottom:0,width:130,display:"flex"}}>
+        <button onTouchEnd={e=>{e.preventDefault();e.stopPropagation();setOffset(0);onEdit();}} onClick={()=>{setOffset(0);onEdit();}} style={{flex:1,background:D.accent+"22",color:D.accent,border:"none",fontSize:13,fontWeight:600,cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:3}}><span style={{fontSize:18}}>✏️</span><span>Editar</span></button>
+        <button onTouchEnd={e=>{e.preventDefault();e.stopPropagation();setOffset(0);onDelete();}} onClick={()=>{setOffset(0);onDelete();}} style={{flex:1,background:D.red+"22",color:D.red,border:"none",fontSize:13,fontWeight:600,cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:3}}><span style={{fontSize:18}}>🗑️</span><span>Borrar</span></button>
+      </div>
+      <div onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
+        style={{transform:`translateX(${offset}px)`,transition:startX.current===null?"transform .25s ease":"none",background:D.surface}}>
+        {children}
+        {offset===0&&<p style={{fontSize:10,color:D.border,textAlign:"right",padding:"0 16px 8px"}}>← deslizá para editar</p>}
+      </div>
+    </div>
+  );
+}
+
 function AportarButton({proyecto, onAporte}){
   const [open,setOpen]=useState(false);
   const [monto,setMonto]=useState("");
@@ -592,44 +634,47 @@ export default function App(){
             const pct=p.meta>0?Math.min(100,Math.round(p.acumulado/p.meta*100)):0;
             const rem=Math.max(0,p.meta-p.acumulado);
             return(
-              <div key={p.id} style={{background:D.surface,borderRadius:16,padding:"16px",marginBottom:12,border:`1px solid ${D.border}`}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12}}>
-                  <div><p style={{fontWeight:600,fontSize:15,margin:"0 0 4px"}}>{p.titulo}</p><span style={{fontSize:11,background:D.accent+"22",color:D.accent,padding:"3px 10px",borderRadius:20,fontWeight:500}}>{p.tipo||"Grupal"}</span></div>
-                  <span style={{fontWeight:700,fontSize:22,color:pct>=100?D.green:D.accent}}>{pct}%</span>
-                </div>
-
-                <div style={{marginBottom:6}}>
-                  <div style={{display:"flex",justifyContent:"space-between",fontSize:11,color:D.textMuted,marginBottom:3}}>
-                    <span>Avance</span><span style={{color:D.accent,fontWeight:600}}>{fmt(p.acumulado,p.moneda)}</span>
+              <div key={p.id} style={{background:D.surface,borderRadius:16,marginBottom:12,border:`1px solid ${D.border}`,overflow:"hidden"}}>
+                <ProyectoSwipe
+                  proyecto={p}
+                  onEdit={()=>handleEdit(p,"proyectos")}
+                  onDelete={()=>handleDelete(p.id,"proyectos")}
+                >
+                  <div style={{padding:"16px"}}>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12}}>
+                      <div><p style={{fontWeight:600,fontSize:15,margin:"0 0 4px"}}>{p.titulo}</p><span style={{fontSize:11,background:D.accent+"22",color:D.accent,padding:"3px 10px",borderRadius:20,fontWeight:500}}>{p.tipo||"Grupal"}</span></div>
+                      <span style={{fontWeight:700,fontSize:22,color:pct>=100?D.green:D.accent}}>{pct}%</span>
+                    </div>
+                    <div style={{marginBottom:6}}>
+                      <div style={{display:"flex",justifyContent:"space-between",fontSize:11,color:D.textMuted,marginBottom:3}}>
+                        <span>Avance</span><span style={{color:D.accent,fontWeight:600}}>{fmt(p.acumulado,p.moneda)}</span>
+                      </div>
+                      <div style={{background:D.surface2,borderRadius:8,height:10}}>
+                        <div style={{width:`${pct}%`,height:"100%",background:`linear-gradient(90deg,${D.accent},${D.purple})`,borderRadius:8,transition:"width .5s ease"}}/>
+                      </div>
+                    </div>
+                    <div style={{marginBottom:12}}>
+                      <div style={{display:"flex",justifyContent:"space-between",fontSize:11,color:D.textMuted,marginBottom:3}}>
+                        <span>Meta</span><span style={{color:D.text,fontWeight:600}}>{fmt(p.meta,p.moneda)}</span>
+                      </div>
+                      <div style={{background:D.surface2,borderRadius:8,height:10}}>
+                        <div style={{width:"100%",height:"100%",background:D.border,borderRadius:8}}/>
+                      </div>
+                    </div>
+                    <div style={{display:"flex",justifyContent:"space-between",fontSize:12,marginBottom:12}}>
+                      <span style={{color:D.textMuted}}>Falta: <span style={{color:D.red,fontWeight:600}}>{fmt(rem,p.moneda)}</span></span>
+                      {p.fecha&&<span style={{color:D.textMuted}}>📅 {p.fecha}</span>}
+                    </div>
+                    <AportarButton proyecto={p} onAporte={async(monto,desc)=>{
+                      const nuevoAcumulado=(p.acumulado||0)+monto;
+                      setLoading(true);
+                      await apiData({action:"update",type:"proyectos",id:p.id,record:{...p,acumulado:nuevoAcumulado}},token);
+                      await apiData({action:"add",type:"ahorros",record:{titulo:desc||`Aporte a ${p.titulo}`,monto,moneda:p.moneda,categoria:"Ahorro general",fecha:today(),persona:userName,nota:`Aporte al proyecto: ${p.titulo}`}},token);
+                      showMsg(`✓ Aporte de ${fmt(monto,p.moneda)} registrado`);
+                      loadAll();setLoading(false);
+                    }}/>
                   </div>
-                  <div style={{background:D.surface2,borderRadius:8,height:10}}>
-                    <div style={{width:`${pct}%`,height:"100%",background:`linear-gradient(90deg,${D.accent},${D.purple})`,borderRadius:8,transition:"width .5s ease"}}/>
-                  </div>
-                </div>
-
-                <div style={{marginBottom:12}}>
-                  <div style={{display:"flex",justifyContent:"space-between",fontSize:11,color:D.textMuted,marginBottom:3}}>
-                    <span>Meta</span><span style={{color:D.text,fontWeight:600}}>{fmt(p.meta,p.moneda)}</span>
-                  </div>
-                  <div style={{background:D.surface2,borderRadius:8,height:10}}>
-                    <div style={{width:"100%",height:"100%",background:D.border,borderRadius:8}}/>
-                  </div>
-                </div>
-
-                <div style={{display:"flex",justifyContent:"space-between",fontSize:12,marginBottom:12}}>
-                  <span style={{color:D.textMuted}}>Falta: <span style={{color:D.red,fontWeight:600}}>{fmt(rem,p.moneda)}</span></span>
-                  {p.fecha&&<span style={{color:D.textMuted}}>📅 {p.fecha}</span>}
-                </div>
-
-                <AportarButton proyecto={p} onAporte={async(monto,desc)=>{
-                  const nuevoAcumulado = (p.acumulado||0) + monto;
-                  setLoading(true);
-                  await apiData({action:"update",type:"proyectos",id:p.id,record:{...p,acumulado:nuevoAcumulado}},token);
-                  await apiData({action:"add",type:"ahorros",record:{titulo:desc||`Aporte a ${p.titulo}`,monto,moneda:p.moneda,categoria:"Ahorro general",fecha:today(),persona:userName,nota:`Aporte al proyecto: ${p.titulo}`}},token);
-                  showMsg(`✓ Aporte de ${fmt(monto,p.moneda)} registrado`);
-                  loadAll();
-                  setLoading(false);
-                }}/>
+                </ProyectoSwipe>
               </div>
             );
           })}
