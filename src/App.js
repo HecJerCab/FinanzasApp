@@ -359,6 +359,36 @@ function LoginScreen({onLogin}){
 
 // ─── MAIN APP ────────────────────────────────────────────────────────────────
 
+function AportarButton({proyecto, onAporte}){
+  const [open,setOpen]=useState(false);
+  const [monto,setMonto]=useState("");
+  const [desc,setDesc]=useState("");
+  return(
+    <>
+      <button onClick={()=>setOpen(true)} style={{width:"100%",padding:"11px",borderRadius:12,border:`1px solid ${D.green}44`,background:D.green+"11",color:D.green,fontSize:14,fontWeight:600}}>
+        + Aportar al proyecto
+      </button>
+      {open&&(
+        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.8)",zIndex:300,display:"flex",alignItems:"flex-end"}} onClick={()=>setOpen(false)}>
+          <div onClick={e=>e.stopPropagation()} style={{background:D.surface,borderRadius:"20px 20px 0 0",padding:"20px 16px 36px",width:"100%",border:`1px solid ${D.border}`}} className="slide-in">
+            <div style={{width:40,height:4,background:D.border,borderRadius:4,margin:"0 auto 16px"}}/>
+            <p style={{fontWeight:700,fontSize:16,marginBottom:4}}>Aportar a "{proyecto.titulo}"</p>
+            <p style={{fontSize:12,color:D.textMuted,marginBottom:16}}>El monto se sumará al acumulado del proyecto y se registrará como ahorro.</p>
+            <label style={{display:"block",fontSize:11,color:D.textMuted,marginBottom:4,fontWeight:500,textTransform:"uppercase",letterSpacing:.3}}>Monto ({proyecto.moneda})</label>
+            <input type="number" placeholder="0" value={monto} onChange={e=>setMonto(e.target.value)} style={{marginBottom:10}}/>
+            <label style={{display:"block",fontSize:11,color:D.textMuted,marginBottom:4,fontWeight:500,textTransform:"uppercase",letterSpacing:.3}}>Descripción (opcional)</label>
+            <input placeholder={`Aporte a ${proyecto.titulo}`} value={desc} onChange={e=>setDesc(e.target.value)} style={{marginBottom:16}}/>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+              <button onClick={()=>setOpen(false)} style={{padding:"13px",borderRadius:12,border:`1px solid ${D.border}`,background:D.surface2,color:D.textMuted,fontSize:14,fontWeight:500}}>Cancelar</button>
+              <button onClick={()=>{if(!monto||+monto<=0) return;onAporte(+monto,desc);setOpen(false);setMonto("");setDesc("");}} style={{padding:"13px",borderRadius:12,border:"none",background:D.green,color:"#fff",fontSize:14,fontWeight:600}}>Aportar ↗</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
 export default function App(){
   const [authState,setAuthState]=useState("loading"); // loading | setup | login | app
   const [token,setToken]=useState("");
@@ -557,8 +587,52 @@ export default function App(){
         </>}
 
         {tab==="Proyectos"&&<>
-          <AddForm type="proyectos" fields={[{id:"titulo",label:"Nombre"},{id:"meta",label:"Meta",type:"number"},{id:"acumulado",label:"Acumulado",type:"number"},{id:"moneda",label:"Moneda",options:MONEDAS},{id:"tipo",label:"Tipo",options:["Individual","Grupal"]},{id:"fecha",label:"Fecha objetivo",type:"date"},{id:"nota",label:"Nota"}]}/>
-          {(records.proyectos||[]).map(p=>{const pct=p.meta>0?Math.min(100,Math.round(p.acumulado/p.meta*100)):0;const rem=p.meta-p.acumulado;return<div key={p.id} style={{background:D.surface,borderRadius:16,padding:"16px",marginBottom:12,border:`1px solid ${D.border}`}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12}}><div><p style={{fontWeight:600,fontSize:15,margin:"0 0 4px"}}>{p.titulo}</p><span style={{fontSize:11,background:D.accent+"22",color:D.accent,padding:"3px 10px",borderRadius:20,fontWeight:500}}>{p.tipo||"Grupal"}</span></div><span style={{fontWeight:700,fontSize:22,color:pct>=100?D.green:D.accent}}>{pct}%</span></div><div style={{background:D.surface2,borderRadius:8,height:10,marginBottom:8}}><div style={{width:`${pct}%`,height:"100%",background:`linear-gradient(90deg,${D.accent},${D.purple})`,borderRadius:8}}/></div><div style={{display:"flex",justifyContent:"space-between",fontSize:12}}><span style={{color:D.textMuted}}>Acumulado: <span style={{color:D.text,fontWeight:500}}>{fmt(p.acumulado,p.moneda)}</span></span><span style={{color:D.textMuted}}>Falta: <span style={{color:D.red,fontWeight:500}}>{fmt(rem>0?rem:0,p.moneda)}</span></span></div>{p.fecha&&<p style={{fontSize:11,color:D.textMuted,margin:"6px 0 0"}}>📅 {p.fecha}</p>}</div>;})}
+          <AddForm type="proyectos" fields={[{id:"titulo",label:"Nombre"},{id:"meta",label:"Meta",type:"number"},{id:"acumulado",label:"Acumulado inicial",type:"number"},{id:"moneda",label:"Moneda",options:MONEDAS},{id:"tipo",label:"Tipo",options:["Individual","Grupal"]},{id:"fecha",label:"Fecha objetivo",type:"date"},{id:"nota",label:"Nota"}]}/>
+          {(records.proyectos||[]).map(p=>{
+            const pct=p.meta>0?Math.min(100,Math.round(p.acumulado/p.meta*100)):0;
+            const rem=Math.max(0,p.meta-p.acumulado);
+            return(
+              <div key={p.id} style={{background:D.surface,borderRadius:16,padding:"16px",marginBottom:12,border:`1px solid ${D.border}`}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12}}>
+                  <div><p style={{fontWeight:600,fontSize:15,margin:"0 0 4px"}}>{p.titulo}</p><span style={{fontSize:11,background:D.accent+"22",color:D.accent,padding:"3px 10px",borderRadius:20,fontWeight:500}}>{p.tipo||"Grupal"}</span></div>
+                  <span style={{fontWeight:700,fontSize:22,color:pct>=100?D.green:D.accent}}>{pct}%</span>
+                </div>
+
+                <div style={{marginBottom:6}}>
+                  <div style={{display:"flex",justifyContent:"space-between",fontSize:11,color:D.textMuted,marginBottom:3}}>
+                    <span>Avance</span><span style={{color:D.accent,fontWeight:600}}>{fmt(p.acumulado,p.moneda)}</span>
+                  </div>
+                  <div style={{background:D.surface2,borderRadius:8,height:10}}>
+                    <div style={{width:`${pct}%`,height:"100%",background:`linear-gradient(90deg,${D.accent},${D.purple})`,borderRadius:8,transition:"width .5s ease"}}/>
+                  </div>
+                </div>
+
+                <div style={{marginBottom:12}}>
+                  <div style={{display:"flex",justifyContent:"space-between",fontSize:11,color:D.textMuted,marginBottom:3}}>
+                    <span>Meta</span><span style={{color:D.text,fontWeight:600}}>{fmt(p.meta,p.moneda)}</span>
+                  </div>
+                  <div style={{background:D.surface2,borderRadius:8,height:10}}>
+                    <div style={{width:"100%",height:"100%",background:D.border,borderRadius:8}}/>
+                  </div>
+                </div>
+
+                <div style={{display:"flex",justifyContent:"space-between",fontSize:12,marginBottom:12}}>
+                  <span style={{color:D.textMuted}}>Falta: <span style={{color:D.red,fontWeight:600}}>{fmt(rem,p.moneda)}</span></span>
+                  {p.fecha&&<span style={{color:D.textMuted}}>📅 {p.fecha}</span>}
+                </div>
+
+                <AportarButton proyecto={p} onAporte={async(monto,desc)=>{
+                  const nuevoAcumulado = (p.acumulado||0) + monto;
+                  setLoading(true);
+                  await apiData({action:"update",type:"proyectos",id:p.id,record:{...p,acumulado:nuevoAcumulado}},token);
+                  await apiData({action:"add",type:"ahorros",record:{titulo:desc||`Aporte a ${p.titulo}`,monto,moneda:p.moneda,categoria:"Ahorro general",fecha:today(),persona:userName,nota:`Aporte al proyecto: ${p.titulo}`}},token);
+                  showMsg(`✓ Aporte de ${fmt(monto,p.moneda)} registrado`);
+                  loadAll();
+                  setLoading(false);
+                }}/>
+              </div>
+            );
+          })}
         </>}
 
         {tab==="Inversiones"&&<>
