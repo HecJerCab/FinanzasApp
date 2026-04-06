@@ -390,12 +390,7 @@ export default function App(){
   },[]);
 
   const checkSetup=async()=>{
-    const r=await apiAuth({action:"verify"}).catch(()=>({error:true}));
-    // Si el endpoint responde (aunque sea con error de auth), el servidor funciona
-    // Verificamos si hay usuarios creados intentando login con datos vacíos
-    const check=await apiAuth({action:"login",username:"__check__",password:"__check__",totpCode:"000000"});
-    if(check.error==="No hay usuarios configurados") setAuthState("setup");
-    else setAuthState("login");
+    setAuthState("login");
   };
 
   const handleLogin=(t,u)=>{ setToken(t);setUserName(u);setAuthState("app");loadAll(t); };
