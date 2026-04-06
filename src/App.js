@@ -359,7 +359,7 @@ function LoginScreen({onLogin}){
 
 // ─── MAIN APP ────────────────────────────────────────────────────────────────
 
-function ProyectoSwipe({proyecto, onEdit, onDelete, children}){
+function ProyectoSwipe({proyecto, onEdit, onDelete, children, ahorros, handleEdit, handleDelete}){
   const [offset,setOffset]=useState(0);
   const [desktop,setDesktop]=useState(isDesktop());
   const startX=useRef(null);
@@ -370,8 +370,16 @@ function ProyectoSwipe({proyecto, onEdit, onDelete, children}){
     <div>
       {children}
       <div style={{display:"flex",gap:8,padding:"0 16px 16px"}}>
-        <button onClick={onEdit} style={{flex:1,padding:"9px",borderRadius:10,border:`1px solid ${D.accent}44`,background:D.accent+"11",color:D.accent,fontSize:13,fontWeight:500}}>✏️ Editar</button>
-        <button onClick={onDelete} style={{flex:1,padding:"9px",borderRadius:10,border:`1px solid ${D.red}44`,background:D.red+"11",color:D.red,fontSize:13,fontWeight:500}}>🗑️ Eliminar</button>
+        <button onClick={onEdit} style={{padding:"9px 16px",borderRadius:10,border:`1px solid ${D.accent}44`,background:D.accent+"11",color:D.accent,fontSize:13,fontWeight:500}}>✏️ Editar</button>
+        <button onClick={onDelete} style={{padding:"9px 16px",borderRadius:10,border:`1px solid ${D.red}44`,background:D.red+"11",color:D.red,fontSize:13,fontWeight:500}}>🗑️ Eliminar</button>
+      </div>
+      <div style={{padding:"0 16px 16px",display:"flex",gap:8}}>
+        <AportarButton proyecto={proyecto} onAporte={async(monto,desc)=>{
+          const nuevoAcumulado=(proyecto.acumulado||0)+monto;
+          await apiData({action:"update",type:"proyectos",id:proyecto.id,record:{...proyecto,acumulado:nuevoAcumulado}},window._nfToken);
+          await apiData({action:"add",type:"ahorros",record:{titulo:desc||`Aporte a ${proyecto.titulo}`,monto,moneda:proyecto.moneda,categoria:"Ahorro general",fecha:today(),persona:window._nfUser,nota:`Aporte al proyecto: ${proyecto.titulo}`}},window._nfToken);
+        }}/>
+        <HistorialAportes proyecto={proyecto} ahorros={ahorros} onEdit={handleEdit} onDelete={handleDelete} desktop={true}/>
       </div>
     </div>
   );
@@ -395,8 +403,52 @@ function ProyectoSwipe({proyecto, onEdit, onDelete, children}){
       <div onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
         style={{transform:`translateX(${offset}px)`,transition:startX.current===null?"transform .25s ease":"none",background:D.surface}}>
         {children}
-        {offset===0&&<p style={{fontSize:10,color:D.border,textAlign:"right",padding:"0 16px 8px"}}>← deslizá para editar</p>}
+        {offset===0&&<p style={{fontSize:10,color:D.border,textAlign:"right",padding:"0 16px 4px"}}>← deslizá para editar</p>}
       </div>
+      <div style={{padding:"0 16px 16px",display:"flex",gap:8,alignItems:"center",background:D.surface}}>
+        <div style={{flex:1}}>
+          <AportarButton proyecto={proyecto} onAporte={async(monto,desc)=>{
+            const nuevoAcumulado=(proyecto.acumulado||0)+monto;
+            await apiData({action:"update",type:"proyectos",id:proyecto.id,record:{...proyecto,acumulado:nuevoAcumulado}},window._nfToken);
+            await apiData({action:"add",type:"ahorros",record:{titulo:desc||`Aporte a ${proyecto.titulo}`,monto,moneda:proyecto.moneda,categoria:"Ahorro general",fecha:today(),persona:window._nfUser,nota:`Aporte al proyecto: ${proyecto.titulo}`}},window._nfToken);
+          }}/>
+        </div>
+        <HistorialAportes proyecto={proyecto} ahorros={ahorros} onEdit={handleEdit} onDelete={handleDelete} desktop={false}/>
+      </div>
+    </div>
+  );
+}
+
+function HistorialAportes({proyecto, ahorros, onEdit, onDelete, desktop}){
+  const [open,setOpen]=useState(false);
+  const aportes=ahorros.filter(a=>a.nota&&a.nota.includes(`Aporte al proyecto: ${proyecto.titulo}`));
+  const total=aportes.reduce((s,a)=>s+a.monto,0);
+
+  const btn = desktop ? (
+    <button onClick={()=>setOpen(o=>!o)} style={{flex:1,padding:"11px",borderRadius:12,border:`1px solid ${D.border}`,background:D.surface2,color:D.textMuted,fontSize:13,fontWeight:500}}>
+      📋 {open?"Ocultar":"Historial"} {aportes.length>0&&`(${aportes.length})`}
+    </button>
+  ) : (
+    <button onClick={()=>setOpen(o=>!o)} style={{width:42,height:42,borderRadius:10,border:`1px solid ${D.border}`,background:D.surface2,color:D.textMuted,fontSize:18,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+      {open?"🙈":"👁️"}
+    </button>
+  );
+
+  return(
+    <div>
+      {btn}
+      {open&&(
+        <div style={{marginTop:10,background:D.surface2,borderRadius:12,overflow:"hidden",border:`1px solid ${D.border}`}}>
+          <div style={{display:"flex",justifyContent:"space-between",padding:"10px 14px",borderBottom:`1px solid ${D.border}`}}>
+            <p style={{fontSize:12,fontWeight:600,color:D.textMuted,textTransform:"uppercase",letterSpacing:.5,margin:0}}>Historial de aportes</p>
+            <p style={{fontSize:12,fontWeight:600,color:D.accent,margin:0}}>{fmt(total,proyecto.moneda)}</p>
+          </div>
+          {aportes.length===0&&<p style={{fontSize:13,color:D.textMuted,textAlign:"center",padding:"1rem"}}>Sin aportes registrados</p>}
+          {aportes.map(a=>(
+            <SwipeRow key={a.id} record={a} type="ahorros" onEdit={onEdit} onDelete={onDelete} color={D.green}/>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -468,6 +520,9 @@ export default function App(){
   const checkSetup=async()=>{
     setAuthState("login");
   };
+
+  // Exponer token y user para uso en componentes hijos
+  useEffect(()=>{ window._nfToken=token; window._nfUser=userName; },[token,userName]);
 
   const handleLogin=(t,u)=>{ setToken(t);setUserName(u);setAuthState("app");loadAll(t); };
 
@@ -639,6 +694,9 @@ export default function App(){
                   proyecto={p}
                   onEdit={()=>handleEdit(p,"proyectos")}
                   onDelete={()=>handleDelete(p.id,"proyectos")}
+                  ahorros={records.ahorros||[]}
+                  handleEdit={handleEdit}
+                  handleDelete={handleDelete}
                 >
                   <div style={{padding:"16px"}}>
                     <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12}}>
@@ -665,14 +723,6 @@ export default function App(){
                       <span style={{color:D.textMuted}}>Falta: <span style={{color:D.red,fontWeight:600}}>{fmt(rem,p.moneda)}</span></span>
                       {p.fecha&&<span style={{color:D.textMuted}}>📅 {p.fecha}</span>}
                     </div>
-                    <AportarButton proyecto={p} onAporte={async(monto,desc)=>{
-                      const nuevoAcumulado=(p.acumulado||0)+monto;
-                      setLoading(true);
-                      await apiData({action:"update",type:"proyectos",id:p.id,record:{...p,acumulado:nuevoAcumulado}},token);
-                      await apiData({action:"add",type:"ahorros",record:{titulo:desc||`Aporte a ${p.titulo}`,monto,moneda:p.moneda,categoria:"Ahorro general",fecha:today(),persona:userName,nota:`Aporte al proyecto: ${p.titulo}`}},token);
-                      showMsg(`✓ Aporte de ${fmt(monto,p.moneda)} registrado`);
-                      loadAll();setLoading(false);
-                    }}/>
                   </div>
                 </ProyectoSwipe>
               </div>
