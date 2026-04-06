@@ -1,4 +1,4 @@
-import jwt from "jsonwebtoken";
+const jwt = require("jsonwebtoken");
 
 const KV_URL = process.env.KV_REST_API_URL;
 const KV_TOKEN = process.env.KV_REST_API_TOKEN;
@@ -24,7 +24,7 @@ function verifyToken(req) {
   return jwt.verify(auth.replace("Bearer ", ""), JWT_SECRET);
 }
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
@@ -69,4 +69,4 @@ export default async function handler(req, res) {
   }
 
   res.status(400).json({ error: "Acción inválida" });
-}
+};

@@ -1,6 +1,6 @@
-import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";
-import { authenticator } from "otplib";
+const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
+const { authenticator } = require("otplib");
 
 const KV_URL = process.env.KV_REST_API_URL;
 const KV_TOKEN = process.env.KV_REST_API_TOKEN;
@@ -20,7 +20,7 @@ async function kvSet(key, value) {
   });
 }
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
@@ -64,7 +64,7 @@ export default async function handler(req, res) {
 
   if (action === "addUser") {
     const authHeader = req.headers.authorization;
-    try { jwt.verify(authHeader?.replace("Bearer ", ""), JWT_SECRET); } 
+    try { jwt.verify(authHeader?.replace("Bearer ", ""), JWT_SECRET); }
     catch { return res.status(401).json({ error: "No autorizado" }); }
     const users = await kvGet("users") || [];
     const hashed = await bcrypt.hash(password, 10);
@@ -76,4 +76,4 @@ export default async function handler(req, res) {
   }
 
   res.status(400).json({ error: "Acción inválida" });
-}
+};
