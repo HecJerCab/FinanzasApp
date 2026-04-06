@@ -12,14 +12,6 @@ async function kvGet(key) {
   return d.result ? JSON.parse(d.result) : null;
 }
 
-async function kvSet(key, value) {
-  await fetch(`${KV_URL}/set/${key}`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${KV_TOKEN}`, "Content-Type": "application/json" },
-    body: JSON.stringify(JSON.stringify(value))
-  });
-}
-
 function base32Decode(str) {
   const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
   let bits = 0, value = 0;
@@ -53,31 +45,35 @@ module.exports = async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
   if (req.method === "OPTIONS") return res.status(200).end();
 
-  const { action, username, password, totpCode } = req.body || {};
+  try {
+    const { action, username, password, totpCode } = req.body || {};
 
-  if (action === "login") {
-    const users = await kvGet("users");
-    if (!users) return res.status(401).json({ error: "No hay usuarios configurados" });
-    const user = users.find(u => u.username === username);
-    if (!user) return res.status(401).json({ error: "Usuario o contraseña incorrectos" });
-    const validPass = await bcrypt.compare(password, user.password);
-    if (!validPass) return res.status(401).json({ error: "Usuario o contraseña incorrectos" });
-    const validTotp = verifyTOTP(totpCode, user.totpSecret);
-    if (!validTotp) return res.status(401).json({ error: "Código de autenticador incorrecto" });
-    const token = jwt.sign({ username }, JWT_SECRET, { expiresIn: "7d" });
-    return res.json({ success: true, token, username });
-  }
-
-  if (action === "verify") {
-    const authHeader = req.headers.authorization;
-    if (!authHeader) return res.status(401).json({ error: "Sin token" });
-    try {
-      const decoded = jwt.verify(authHeader.replace("Bearer ", ""), JWT_SECRET);
-      return res.json({ success: true, username: decoded.username });
-    } catch {
-      return res.status(401).json({ error: "Token inválido o expirado" });
+    if (action === "login") {
+      const users = await kvGet("users");
+      if (!users) return res.status(401).json({ error: "No hay usuarios configurados" });
+      const user = users.find(u => u.username === username);
+      if (!user) return res.status(401).json({ error: "Usuario o contraseña incorrectos" });
+      const validPass = await bcrypt.compare(password, user.password);
+      if (!validPass) return res.status(401).json({ error: "Usuario o contraseña incorrectos" });
+      const validTotp = verifyTOTP(totpCode, user.totpSecret);
+      if (!validTotp) return res.status(401).json({ error: "Código de autenticador incorrecto" });
+      const token = jwt.sign({ username }, JWT_SECRET, { expiresIn: "7d" });
+      return res.json({ success: true, token, username });
     }
-  }
 
-  res.status(400).json({ error: "Acción inválida" });
+    if (action === "verify") {
+      const authHeader = req.headers.authorization;
+      if (!authHeader) return res.status(401).json({ error: "Sin token" });
+      try {
+        const decoded = jwt.verify(authHeader.replace("Bearer ", ""), JWT_SECRET);
+        return res.json({ success: true, username: decoded.username });
+      } catch {
+        return res.status(401).json({ error: "Token inválido o expirado" });
+      }
+    }
+
+    res.status(400).json({ error: "Acción inválida" });
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
 };
