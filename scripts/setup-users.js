@@ -12,8 +12,8 @@ const USERS = [
 function generateSecret() {
   const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
   let secret = "";
-  const bytes = crypto.randomBytes(20);
-  for (let i = 0; i < 20; i++) secret += chars[bytes[i] % 32];
+  const bytes = crypto.randomBytes(16);
+  for (let i = 0; i < 16; i++) secret += chars[bytes[i] % 32];
   return secret;
 }
 
