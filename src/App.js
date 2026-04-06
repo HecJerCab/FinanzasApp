@@ -757,8 +757,8 @@ export default function App(){
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:4}}>
             <StatCard label="Ingresos" value={(records.ingresos||[]).filter(r=>r.moneda===moneda).reduce((s,r)=>s+r.monto,0)} color={D.green} moneda={moneda} sub="historial"/>
             <StatCard label="Gastos" value={(records.gastos||[]).filter(r=>r.moneda===moneda).reduce((s,r)=>s+r.monto,0)} color={D.red} moneda={moneda} sub="historial"/>
-            <StatCard label="Ahorrado" value={(records.ahorros||[]).filter(r=>r.moneda===moneda).reduce((s,r)=>s+r.monto,0)} color={D.accent} moneda={moneda} sub="historial"/>
-            <StatCard label="Invertido" value={(records.inversiones||[]).filter(r=>r.moneda===moneda).reduce((s,r)=>s+r.monto,0)} color={D.purple} moneda={moneda} sub="historial"/>
+            <StatCard label="Ahorrado" value={(records.ahorros||[]).filter(r=>r.moneda===moneda&&!r.nota?.startsWith("Aporte al proyecto")).reduce((s,r)=>s+r.monto,0)} color={D.accent} moneda={moneda} sub="historial"/>
+            <StatCard label="En proyectos" value={(records.proyectos||[]).filter(r=>r.moneda===moneda).reduce((s,r)=>s+(r.acumulado||0),0)} color={D.purple} moneda={moneda} sub="acumulado total"/>
           </div>
           {chartLoaded&&<><p style={{fontSize:12,fontWeight:600,color:D.textMuted,textTransform:"uppercase",letterSpacing:1,margin:"20px 0 10px"}}>Ingresos vs Gastos</p><div style={{background:D.surface,borderRadius:16,padding:"14px",border:`1px solid ${D.border}`,marginBottom:14}}><BarChart data={monthlyData(records.ingresos||[])} color={D.green} moneda={moneda}/></div><p style={{fontSize:12,fontWeight:600,color:D.textMuted,textTransform:"uppercase",letterSpacing:1,margin:"16px 0 10px"}}>Distribución de gastos</p><div style={{background:D.surface,borderRadius:16,padding:"14px",border:`1px solid ${D.border}`,marginBottom:14}}><PieChart data={CAT_GASTO.map(c=>({label:c,value:(records.gastos||[]).filter(r=>r.categoria===c&&r.moneda===moneda).reduce((s,r)=>s+r.monto,0),color:CAT_COLORS[c]})).filter(x=>x.value>0)}/></div></>}
         </>}
