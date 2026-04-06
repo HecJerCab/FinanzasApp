@@ -552,6 +552,20 @@ export default function App(){
   const confirmDelete=async()=>{
     if(!deleteInfo) return;
     setLoading(true);
+
+    // Si es un aporte a proyecto, descontamos del acumulado
+    if(deleteInfo.type==="ahorros"){
+      const aporte=(records.ahorros||[]).find(a=>a.id===deleteInfo.id);
+      if(aporte?.nota?.startsWith("Aporte al proyecto: ")){
+        const nombreProyecto=aporte.nota.replace("Aporte al proyecto: ","");
+        const proyecto=(records.proyectos||[]).find(p=>p.titulo===nombreProyecto);
+        if(proyecto){
+          const nuevoAcumulado=Math.max(0,(proyecto.acumulado||0)-aporte.monto);
+          await apiData({action:"update",type:"proyectos",id:proyecto.id,record:{...proyecto,acumulado:nuevoAcumulado}},token);
+        }
+      }
+    }
+
     await apiData({action:"delete",type:deleteInfo.type,id:deleteInfo.id},token);
     showMsg("✓ Eliminado");setDeleteInfo(null);loadAll();setLoading(false);
   };
