@@ -311,6 +311,56 @@ function HistorialAportes({proyecto,ahorros,onEdit,onDelete,desktop}){
   );
 }
 
+function ProyectosCarrusel({proyectos}){
+  const [idx,setIdx]=useState(0);
+  const p=proyectos[idx];
+  const pct=p.meta>0?Math.min(100,Math.round(p.acumulado/p.meta*100)):0;
+  const rem=Math.max(0,p.meta-p.acumulado);
+  return(
+    <div style={{background:D.surface,borderRadius:16,padding:"14px",border:`1px solid ${D.border}`}}>
+      {/* Selector de proyecto */}
+      <div style={{display:"flex",gap:6,marginBottom:12,overflowX:"auto",paddingBottom:4}}>
+        {proyectos.map((pr,i)=>(
+          <button key={pr.id} onClick={()=>setIdx(i)} style={{flexShrink:0,padding:"4px 12px",borderRadius:20,border:`1px solid ${i===idx?D.accent:D.border}`,background:i===idx?D.accent+"22":D.surface2,color:i===idx?D.accent:D.textMuted,fontSize:12,fontWeight:i===idx?600:400,whiteSpace:"nowrap"}}>
+            {pr.titulo}
+          </button>
+        ))}
+      </div>
+
+      {/* Info del proyecto seleccionado */}
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+        <span style={{fontSize:11,background:D.accent+"22",color:D.accent,padding:"3px 10px",borderRadius:20,fontWeight:500}}>{p.tipo||"Grupal"}</span>
+        <span style={{fontWeight:700,fontSize:20,color:pct>=100?D.green:D.accent}}>{pct}%</span>
+      </div>
+
+      <div style={{marginBottom:6}}>
+        <div style={{display:"flex",justifyContent:"space-between",fontSize:11,color:D.textMuted,marginBottom:3}}>
+          <span>Avance</span><span style={{color:D.accent,fontWeight:600}}>{fmt(p.acumulado,p.moneda)}</span>
+        </div>
+        <div style={{background:D.surface2,borderRadius:8,height:10}}>
+          <div style={{width:`${pct}%`,height:"100%",background:`linear-gradient(90deg,${D.accent},${D.purple})`,borderRadius:8,transition:"width .5s ease"}}/>
+        </div>
+      </div>
+
+      <div style={{display:"flex",justifyContent:"space-between",fontSize:12,marginTop:6}}>
+        <span style={{color:D.textMuted}}>Meta: <span style={{color:D.text,fontWeight:500}}>{fmt(p.meta,p.moneda)}</span></span>
+        <span style={{color:D.textMuted}}>Falta: <span style={{color:D.red,fontWeight:600}}>{fmt(rem,p.moneda)}</span></span>
+      </div>
+
+      {p.fecha&&<p style={{fontSize:11,color:D.textMuted,margin:"6px 0 0"}}>📅 {p.fecha}</p>}
+
+      {/* Navegación con flechas */}
+      {proyectos.length>1&&(
+        <div style={{display:"flex",justifyContent:"space-between",marginTop:10}}>
+          <button onClick={()=>setIdx(i=>Math.max(0,i-1))} disabled={idx===0} style={{background:"none",border:`1px solid ${D.border}`,borderRadius:8,padding:"4px 12px",color:idx===0?D.border:D.textMuted,fontSize:13}}>← Ant</button>
+          <span style={{fontSize:11,color:D.textMuted,alignSelf:"center"}}>{idx+1} / {proyectos.length}</span>
+          <button onClick={()=>setIdx(i=>Math.min(proyectos.length-1,i+1))} disabled={idx===proyectos.length-1} style={{background:"none",border:`1px solid ${D.border}`,borderRadius:8,padding:"4px 12px",color:idx===proyectos.length-1?D.border:D.textMuted,fontSize:13}}>Sig →</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ProyectoSwipe({proyecto,onEdit,onDelete,children,ahorros,handleEdit,handleDelete}){
   const [offset,setOffset]=useState(0);
   const [desktop,setDesktop]=useState(isDesktop());
