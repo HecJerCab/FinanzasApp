@@ -95,24 +95,25 @@ function BarChart({data,color=D.accent,moneda="ARS"}){
   return <div style={{position:"relative",height:180}}><canvas ref={ref}/></div>;
 }
 
-function BarChartDoble({ingresos,gastos,moneda="ARS"}){
+function BarChartDoble({ingresos,gastos,moneda="ARS",presupuesto}){
   const ref=useRef();
+  const [showPresup,setShowPresup]=useState(false);
+
   useEffect(()=>{
     if(!ref.current||!window.Chart) return;
     if(ref.current._chart) ref.current._chart.destroy();
-    // Unir todos los meses de ambas series
     const allLabels=[...new Set([...ingresos.map(d=>d.label),...gastos.map(d=>d.label)])].sort();
     const ingData=allLabels.map(l=>ingresos.find(d=>d.label===l)?.value||0);
     const gasData=allLabels.map(l=>gastos.find(d=>d.label===l)?.value||0);
+    const totalPresup=presupuesto?.items?.reduce((s,i)=>s+(+i.monto||0),0)||0;
+    const datasets=[
+      {label:"Ingresos",data:ingData,backgroundColor:D.green+"99",borderRadius:6,borderSkipped:false},
+      {label:"Gastos reales",data:gasData,backgroundColor:D.red+"99",borderRadius:6,borderSkipped:false},
+      ...(showPresup&&totalPresup>0?[{label:"Presupuestado",data:allLabels.map(()=>totalPresup),backgroundColor:D.yellow+"99",borderRadius:6,borderSkipped:false,borderDash:[5,5]}]:[])
+    ];
     ref.current._chart=new window.Chart(ref.current.getContext("2d"),{
       type:"bar",
-      data:{
-        labels:allLabels,
-        datasets:[
-          {label:"Ingresos",data:ingData,backgroundColor:D.green+"99",borderRadius:6,borderSkipped:false},
-          {label:"Gastos",data:gasData,backgroundColor:D.red+"99",borderRadius:6,borderSkipped:false}
-        ]
-      },
+      data:{labels:allLabels,datasets},
       options:{
         responsive:true,maintainAspectRatio:false,
         plugins:{
@@ -125,14 +126,41 @@ function BarChartDoble({ingresos,gastos,moneda="ARS"}){
         }
       }
     });
-  },[ingresos,gastos]);
+  },[ingresos,gastos,showPresup]);
+
   if(!ingresos?.length&&!gastos?.length) return <p style={{color:D.textMuted,fontSize:13,textAlign:"center",padding:"1rem"}}>Sin datos</p>;
+
+  const totalPresup=presupuesto?.items?.reduce((s,i)=>s+(+i.monto||0),0)||0;
+
   return(
     <div>
-      <div style={{display:"flex",gap:16,marginBottom:10}}>
+      <div style={{display:"flex",gap:12,marginBottom:12,flexWrap:"wrap",alignItems:"center"}}>
         <span style={{display:"flex",alignItems:"center",gap:6,fontSize:12,color:D.textMuted}}><span style={{width:10,height:10,borderRadius:2,background:D.green,display:"inline-block"}}/> Ingresos</span>
-        <span style={{display:"flex",alignItems:"center",gap:6,fontSize:12,color:D.textMuted}}><span style={{width:10,height:10,borderRadius:2,background:D.red,display:"inline-block"}}/> Gastos</span>
+        <span style={{display:"flex",alignItems:"center",gap:6,fontSize:12,color:D.textMuted}}><span style={{width:10,height:10,borderRadius:2,background:D.red,display:"inline-block"}}/> Gastos reales</span>
+        {totalPresup>0&&(
+          <button onClick={()=>setShowPresup(p=>!p)} style={{display:"flex",alignItems:"center",gap:6,fontSize:12,padding:"4px 12px",borderRadius:20,border:`1px solid ${showPresup?D.yellow:D.border}`,background:showPresup?D.yellow+"22":D.surface2,color:showPresup?D.yellow:D.textMuted,fontWeight:showPresup?600:400}}>
+            <span style={{width:10,height:10,borderRadius:2,background:D.yellow,display:"inline-block"}}/>
+            Presupuestado {showPresup?"✓":""}
+          </button>
+        )}
+        {totalPresup===0&&<span style={{fontSize:11,color:D.textMuted,fontStyle:"italic"}}>Sin presupuesto guardado</span>}
       </div>
+      {showPresup&&totalPresup>0&&(
+        <div style={{display:"flex",gap:16,marginBottom:10,flexWrap:"wrap"}}>
+          <div style={{background:D.surface2,borderRadius:10,padding:"8px 14px",fontSize:12}}>
+            <span style={{color:D.textMuted}}>Presupuestado: </span>
+            <span style={{color:D.yellow,fontWeight:600}}>{fmt(totalPresup,moneda)}</span>
+          </div>
+          <div style={{background:D.surface2,borderRadius:10,padding:"8px 14px",fontSize:12}}>
+            <span style={{color:D.textMuted}}>Gasto real vs presup: </span>
+            {gastos.length>0&&(()=>{
+              const realTotal=gastos.reduce((s,d)=>s+d.value,0)/gastos.length;
+              const diff=realTotal-totalPresup;
+              return <span style={{color:diff>0?D.red:D.green,fontWeight:600}}>{diff>0?"+":""}{fmt(diff,moneda)}</span>;
+            })()}
+          </div>
+        </div>
+      )}
       <div style={{position:"relative",height:200}}><canvas ref={ref}/></div>
     </div>
   );
@@ -855,6 +883,7 @@ export default function App(){
                   ingresos={monthlyData(records.ingresos||[])}
                   gastos={monthlyData(records.gastos||[])}
                   moneda={moneda}
+                  presupuesto={records.presupuesto}
                 />
               </div>
               <p style={{fontSize:12,fontWeight:600,color:D.textMuted,textTransform:"uppercase",letterSpacing:1,margin:"16px 0 10px"}}>Distribución de gastos</p>
