@@ -338,7 +338,7 @@ function QuickAdd({onSave,onClose,userName}){
 
 // ── PRESUPUESTO ──────────────────────────────────────────────────────────────
 function Presupuesto({chartLoaded}){
-  const token = window._nfToken;
+  const token = window._nfToken || localStorage.getItem("nf_jwt");
   const [ingreso,setIngreso]=useState("");
   const [items,setItems]=useState([]);
   const [newItem,setNewItem]=useState({cat:"",desc:"",monto:""});
