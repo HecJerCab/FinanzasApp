@@ -337,7 +337,8 @@ function QuickAdd({onSave,onClose,userName}){
 }
 
 // ── PRESUPUESTO ──────────────────────────────────────────────────────────────
-function Presupuesto({chartLoaded,token}){
+function Presupuesto({chartLoaded}){
+  const token = window._nfToken;
   const [ingreso,setIngreso]=useState("");
   const [items,setItems]=useState([]);
   const [newItem,setNewItem]=useState({cat:"",desc:"",monto:""});
@@ -794,7 +795,7 @@ export default function App(){
             {CAT_INV.map((c,i)=><CatAccordion key={c} title={c} color={COLORS[i%COLORS.length]} items={fl.inversiones.filter(r=>r.tipo===c)} type="inversiones" onEdit={handleEdit} onDelete={handleDelete}/>)}
           </>}
 
-          {tab==="Presupuesto"&&<Presupuesto chartLoaded={chartLoaded} token={token}/>}
+          {tab==="Presupuesto"&&<Presupuesto chartLoaded={chartLoaded}/>}
 
           {tab==="Reportes"&&<>
             <PeriodFilter/>
