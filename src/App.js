@@ -849,7 +849,7 @@ export default function App(){
             {chartLoaded&&gastosPorCat.length>0&&<><p style={{fontSize:12,fontWeight:600,color:D.textMuted,textTransform:"uppercase",letterSpacing:1,margin:"20px 0 10px"}}>Gastos por categoría</p><div style={{background:D.surface,borderRadius:16,padding:"14px",border:`1px solid ${D.border}`}}><PieChart data={gastosPorCat}/></div></>}
             <p style={{fontSize:12,fontWeight:600,color:D.textMuted,textTransform:"uppercase",letterSpacing:1,margin:"20px 0 10px"}}>Proyectos activos</p>
            {(records.proyectos||[]).length===0&&<p style={{color:D.textMuted,fontSize:13,textAlign:"center",padding:"1rem"}}>Sin proyectos</p>}
-{(records.proyectos||[]).length>0&&<ProyectosCarrusel proyectos={records.proyectos||[]}/>}
+           {(records.proyectos||[]).length>0&&<ProyectosCarrusel proyectos={records.proyectos||[]}/>}</>}
 
           {tab==="Ingresos"&&<>
             <AddForm type="ingresos" fields={[{id:"titulo",label:"Descripción",placeholder:"Ej: Sueldo"},{id:"monto",label:"Monto",type:"number"},{id:"moneda",label:"Moneda",options:MONEDAS},{id:"categoria",label:"Categoría",options:CAT_INGRESO},{id:"persona",label:"¿Quién?"},{id:"fecha",label:"Fecha",type:"date"},{id:"nota",label:"Nota"}]}/>
