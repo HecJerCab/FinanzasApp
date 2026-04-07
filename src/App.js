@@ -848,8 +848,8 @@ export default function App(){
             </div>
             {chartLoaded&&gastosPorCat.length>0&&<><p style={{fontSize:12,fontWeight:600,color:D.textMuted,textTransform:"uppercase",letterSpacing:1,margin:"20px 0 10px"}}>Gastos por categoría</p><div style={{background:D.surface,borderRadius:16,padding:"14px",border:`1px solid ${D.border}`}}><PieChart data={gastosPorCat}/></div></>}
             <p style={{fontSize:12,fontWeight:600,color:D.textMuted,textTransform:"uppercase",letterSpacing:1,margin:"20px 0 10px"}}>Proyectos activos</p>
-            {(records.proyectos||[]).slice(0,3).map(p=>{const pct=p.meta>0?Math.min(100,Math.round(p.acumulado/p.meta*100)):0;return<div key={p.id} style={{background:D.surface,borderRadius:14,padding:"14px",marginBottom:10,border:`1px solid ${D.border}`}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:10}}><p style={{fontWeight:600,margin:0}}>{p.titulo}</p><span style={{fontSize:11,background:D.accent+"22",color:D.accent,padding:"3px 10px",borderRadius:20,fontWeight:500}}>{p.tipo||"Grupal"}</span></div><div style={{background:D.surface2,borderRadius:6,height:8,marginBottom:6}}><div style={{width:`${pct}%`,height:"100%",background:`linear-gradient(90deg,${D.accent},${D.purple})`,borderRadius:6}}/></div><div style={{display:"flex",justifyContent:"space-between",fontSize:12,color:D.textMuted}}><span>{fmt(p.acumulado,p.moneda)}</span><span style={{fontWeight:600,color:D.accent}}>{pct}% — Meta: {fmt(p.meta,p.moneda)}</span></div></div>;})}
-          </>}
+           {(records.proyectos||[]).length===0&&<p style={{color:D.textMuted,fontSize:13,textAlign:"center",padding:"1rem"}}>Sin proyectos</p>}
+{(records.proyectos||[]).length>0&&<ProyectosCarrusel proyectos={records.proyectos||[]}/>}
 
           {tab==="Ingresos"&&<>
             <AddForm type="ingresos" fields={[{id:"titulo",label:"Descripción",placeholder:"Ej: Sueldo"},{id:"monto",label:"Monto",type:"number"},{id:"moneda",label:"Moneda",options:MONEDAS},{id:"categoria",label:"Categoría",options:CAT_INGRESO},{id:"persona",label:"¿Quién?"},{id:"fecha",label:"Fecha",type:"date"},{id:"nota",label:"Nota"}]}/>
