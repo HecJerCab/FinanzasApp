@@ -11,15 +11,16 @@ async function kvGet(key) {
   let val = d.result;
   if (typeof val === "string") { try { val = JSON.parse(val); } catch {} }
   if (typeof val === "string") { try { val = JSON.parse(val); } catch {} }
-  return Array.isArray(val) ? val : null;
+  return val;
 }
 
 async function kvSet(key, value) {
-  await fetch(`${KV_URL}/set/${encodeURIComponent(key)}`, {
+  const r = await fetch(`${KV_URL}/set/${encodeURIComponent(key)}`, {
     method: "POST",
     headers: { Authorization: `Bearer ${KV_TOKEN}`, "Content-Type": "application/json" },
     body: JSON.stringify(JSON.stringify(value))
   });
+  return r.json();
 }
 
 function verifyToken(req) {
@@ -37,7 +38,6 @@ module.exports = async function handler(req, res) {
   try { verifyToken(req); } catch { return res.status(401).json({ error: "No autorizado" }); }
 
   const { action, type, record, id } = req.body || {};
-  const KEY = `finanzas:${type}`;
 
   if (action === "getAll") {
     const types = ["ingresos","gastos","ahorros","proyectos","inversiones"];
@@ -51,7 +51,9 @@ module.exports = async function handler(req, res) {
 
   if (action === "savePresupuesto") {
     await kvSet("finanzas:presupuesto", record);
-    return res.json({ success: true });
+    // Verificar que se guardó
+    const check = await kvGet("finanzas:presupuesto");
+    return res.json({ success: true, saved: check !== null });
   }
 
   if (action === "getPresupuesto") {
@@ -60,26 +62,26 @@ module.exports = async function handler(req, res) {
   }
 
   if (action === "add") {
-    const records = await kvGet(KEY) || [];
+    const records = await kvGet(`finanzas:${type}`) || [];
     const newRecord = { ...record, id: Date.now().toString() + Math.random().toString(36).slice(2) };
     records.unshift(newRecord);
-    await kvSet(KEY, records);
+    await kvSet(`finanzas:${type}`, records);
     return res.json({ success: true, record: newRecord });
   }
 
   if (action === "update") {
-    const records = await kvGet(KEY) || [];
+    const records = await kvGet(`finanzas:${type}`) || [];
     const idx = records.findIndex(r => r.id === id);
     if (idx === -1) return res.status(404).json({ error: "Registro no encontrado" });
     records[idx] = { ...records[idx], ...record, id };
-    await kvSet(KEY, records);
+    await kvSet(`finanzas:${type}`, records);
     return res.json({ success: true });
   }
 
   if (action === "delete") {
-    const records = await kvGet(KEY) || [];
+    const records = await kvGet(`finanzas:${type}`) || [];
     const filtered = records.filter(r => r.id !== id);
-    await kvSet(KEY, filtered);
+    await kvSet(`finanzas:${type}`, filtered);
     return res.json({ success: true });
   }
 
