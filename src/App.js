@@ -337,20 +337,33 @@ function QuickAdd({onSave,onClose,userName}){
 }
 
 // ── PRESUPUESTO ──────────────────────────────────────────────────────────────
-function Presupuesto({chartLoaded}){
+function Presupuesto({chartLoaded,token}){
   const [ingreso,setIngreso]=useState("");
   const [items,setItems]=useState([]);
   const [newItem,setNewItem]=useState({cat:"",desc:"",monto:""});
+  const [saved,setSaved]=useState(false);
+  const [loadingP,setLoadingP]=useState(true);
+  const [editIdx,setEditIdx]=useState(null);
   const chartRef=useRef();
+
+  useEffect(()=>{
+    apiData({action:"getPresupuesto"},token).then(r=>{
+      if(r.success&&r.data){
+        setIngreso(r.data.ingreso||"");
+        setItems(r.data.items||[]);
+      }
+      setLoadingP(false);
+    });
+  },[]);
+
+  const guardar=async()=>{
+    await apiData({action:"savePresupuesto",record:{ingreso,items}},token);
+    setSaved(true);
+    setTimeout(()=>setSaved(false),2000);
+  };
 
   const totalGastos=items.reduce((s,i)=>s+(+i.monto||0),0);
   const balance=(+ingreso||0)-totalGastos;
-
-  const addItem=()=>{
-    if(!newItem.monto||!newItem.cat) return;
-    setItems(p=>[...p,{...newItem,id:Date.now()}]);
-    setNewItem({cat:"",desc:"",monto:""});
-  };
 
   const pieData=[
     ...CAT_GASTO.map(c=>({label:c,value:items.filter(i=>i.cat===c).reduce((s,i)=>s+(+i.monto||0),0),color:CAT_COLORS[c]})).filter(x=>x.value>0),
@@ -367,6 +380,8 @@ function Presupuesto({chartLoaded}){
     });
   },[items,ingreso,chartLoaded]);
 
+  if(loadingP) return <p style={{color:D.textMuted,textAlign:"center",padding:"2rem"}}>Cargando presupuesto...</p>;
+
   return(
     <div style={{padding:"0 0 2rem"}}>
       <div style={{background:D.surface,borderRadius:16,padding:"16px",marginBottom:14,border:`1px solid ${D.border}`}}>
@@ -375,46 +390,49 @@ function Presupuesto({chartLoaded}){
       </div>
 
       <div style={{background:D.surface,borderRadius:16,padding:"16px",marginBottom:14,border:`1px solid ${D.border}`}}>
-        <p style={{fontWeight:600,fontSize:14,marginBottom:12}}>Agregar gasto presupuestado</p>
+        <p style={{fontWeight:600,fontSize:14,marginBottom:12}}>Agregar ítem de gasto</p>
         <select value={newItem.cat} onChange={e=>setNewItem(p=>({...p,cat:e.target.value}))} style={{marginBottom:10}}>
           <option value="">Categoría...</option>
           {CAT_GASTO.map(c=><option key={c}>{c}</option>)}
         </select>
         <input placeholder="Descripción (opcional)" value={newItem.desc} onChange={e=>setNewItem(p=>({...p,desc:e.target.value}))} style={{marginBottom:10}}/>
         <input type="number" placeholder="Monto" value={newItem.monto} onChange={e=>setNewItem(p=>({...p,monto:e.target.value}))} style={{marginBottom:10}}/>
-        <button onClick={addItem} style={{width:"100%",padding:"12px",borderRadius:12,border:"none",background:D.accent,color:"#fff",fontSize:14,fontWeight:600}}>+ Agregar</button>
+        <button onClick={()=>{if(!newItem.monto||!newItem.cat) return;setItems(p=>[...p,{...newItem,id:Date.now()}]);setNewItem({cat:"",desc:"",monto:""}); }} style={{width:"100%",padding:"12px",borderRadius:12,border:"none",background:D.accent,color:"#fff",fontSize:14,fontWeight:600}}>+ Agregar ítem</button>
       </div>
 
       {items.length>0&&<>
         <div style={{background:D.surface,borderRadius:16,padding:"16px",marginBottom:14,border:`1px solid ${D.border}`}}>
-          <p style={{fontWeight:600,fontSize:14,marginBottom:12}}>Gastos cargados</p>
-          {items.map(it=>(
-            <div key={it.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderBottom:`1px solid ${D.border}33`}}>
-              <div>
-                <p style={{fontSize:13,fontWeight:500,margin:0}}>{it.desc||it.cat}</p>
-                <span style={{fontSize:11,background:(CAT_COLORS[it.cat]||D.accent)+"22",color:CAT_COLORS[it.cat]||D.accent,padding:"2px 8px",borderRadius:20}}>{it.cat}</span>
-              </div>
-              <div style={{display:"flex",alignItems:"center",gap:8}}>
-                <span style={{fontWeight:600,color:D.red}}>{fmtARS(+it.monto)}</span>
-                <button onClick={()=>setItems(p=>p.filter(i=>i.id!==it.id))} style={{background:D.red+"22",border:"none",borderRadius:6,padding:"4px 8px",color:D.red,fontSize:12}}>✕</button>
-              </div>
+          <p style={{fontWeight:600,fontSize:14,marginBottom:12}}>Ítems del presupuesto</p>
+          {items.map((it,idx)=>(
+            <div key={it.id} style={{borderBottom:`1px solid ${D.border}33`,paddingBottom:8,marginBottom:8}}>
+              {editIdx===idx?(
+                <div>
+                  <select value={it.cat} onChange={e=>setItems(p=>p.map((x,i)=>i===idx?{...x,cat:e.target.value}:x))} style={{marginBottom:6}}><option value="">Categoría...</option>{CAT_GASTO.map(c=><option key={c}>{c}</option>)}</select>
+                  <input placeholder="Descripción" value={it.desc} onChange={e=>setItems(p=>p.map((x,i)=>i===idx?{...x,desc:e.target.value}:x))} style={{marginBottom:6}}/>
+                  <input type="number" placeholder="Monto" value={it.monto} onChange={e=>setItems(p=>p.map((x,i)=>i===idx?{...x,monto:e.target.value}:x))} style={{marginBottom:6}}/>
+                  <button onClick={()=>setEditIdx(null)} style={{width:"100%",padding:"8px",borderRadius:8,border:"none",background:D.green,color:"#fff",fontSize:13,fontWeight:600}}>✓ Listo</button>
+                </div>
+              ):(
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                  <div>
+                    <p style={{fontSize:13,fontWeight:500,margin:0}}>{it.desc||it.cat}</p>
+                    <span style={{fontSize:11,background:(CAT_COLORS[it.cat]||D.accent)+"22",color:CAT_COLORS[it.cat]||D.accent,padding:"2px 8px",borderRadius:20}}>{it.cat}</span>
+                  </div>
+                  <div style={{display:"flex",alignItems:"center",gap:6}}>
+                    <span style={{fontWeight:600,color:D.red}}>{fmtARS(+it.monto)}</span>
+                    <button onClick={()=>setEditIdx(idx)} style={{background:D.accent+"22",border:"none",borderRadius:6,padding:"4px 8px",color:D.accent,fontSize:12}}>✏️</button>
+                    <button onClick={()=>setItems(p=>p.filter((_,i)=>i!==idx))} style={{background:D.red+"22",border:"none",borderRadius:6,padding:"4px 8px",color:D.red,fontSize:12}}>✕</button>
+                  </div>
+                </div>
+              )}
             </div>
           ))}
         </div>
 
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:14}}>
-          <div style={{background:D.surface,borderRadius:12,padding:"12px",border:`1px solid ${D.border}`,textAlign:"center"}}>
-            <p style={{fontSize:10,color:D.textMuted,margin:"0 0 4px",textTransform:"uppercase"}}>Ingreso</p>
-            <p style={{fontSize:15,fontWeight:700,color:D.green,margin:0}}>{fmtShort(+ingreso)}</p>
-          </div>
-          <div style={{background:D.surface,borderRadius:12,padding:"12px",border:`1px solid ${D.border}`,textAlign:"center"}}>
-            <p style={{fontSize:10,color:D.textMuted,margin:"0 0 4px",textTransform:"uppercase"}}>Gastos</p>
-            <p style={{fontSize:15,fontWeight:700,color:D.red,margin:0}}>{fmtShort(totalGastos)}</p>
-          </div>
-          <div style={{background:D.surface,borderRadius:12,padding:"12px",border:`1px solid ${D.border}`,textAlign:"center"}}>
-            <p style={{fontSize:10,color:D.textMuted,margin:"0 0 4px",textTransform:"uppercase"}}>Disponible</p>
-            <p style={{fontSize:15,fontWeight:700,color:balance>=0?D.green:D.red,margin:0}}>{fmtShort(balance)}</p>
-          </div>
+          <div style={{background:D.surface,borderRadius:12,padding:"12px",border:`1px solid ${D.border}`,textAlign:"center"}}><p style={{fontSize:10,color:D.textMuted,margin:"0 0 4px",textTransform:"uppercase"}}>Ingreso</p><p style={{fontSize:15,fontWeight:700,color:D.green,margin:0}}>{fmtShort(+ingreso)}</p></div>
+          <div style={{background:D.surface,borderRadius:12,padding:"12px",border:`1px solid ${D.border}`,textAlign:"center"}}><p style={{fontSize:10,color:D.textMuted,margin:"0 0 4px",textTransform:"uppercase"}}>Gastos</p><p style={{fontSize:15,fontWeight:700,color:D.red,margin:0}}>{fmtShort(totalGastos)}</p></div>
+          <div style={{background:D.surface,borderRadius:12,padding:"12px",border:`1px solid ${D.border}`,textAlign:"center"}}><p style={{fontSize:10,color:D.textMuted,margin:"0 0 4px",textTransform:"uppercase"}}>Disponible</p><p style={{fontSize:15,fontWeight:700,color:balance>=0?D.green:D.red,margin:0}}>{fmtShort(balance)}</p></div>
         </div>
 
         {chartLoaded&&pieData.length>0&&(
@@ -441,7 +459,10 @@ function Presupuesto({chartLoaded}){
           </div>
         )}
 
-        <button onClick={()=>{setItems([]);setIngreso("");}} style={{width:"100%",padding:"12px",borderRadius:12,border:`1px solid ${D.border}`,background:D.surface2,color:D.textMuted,fontSize:14,fontWeight:500}}>🗑️ Limpiar presupuesto</button>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+          <button onClick={guardar} style={{padding:"12px",borderRadius:12,border:"none",background:saved?D.green:D.accent,color:"#fff",fontSize:14,fontWeight:600,transition:"background .3s"}}>{saved?"✓ Guardado":"💾 Guardar modelo"}</button>
+          <button onClick={()=>{setItems([]);setIngreso("");}} style={{padding:"12px",borderRadius:12,border:`1px solid ${D.border}`,background:D.surface2,color:D.textMuted,fontSize:14,fontWeight:500}}>🗑️ Limpiar</button>
+        </div>
       </>}
     </div>
   );
@@ -773,7 +794,7 @@ export default function App(){
             {CAT_INV.map((c,i)=><CatAccordion key={c} title={c} color={COLORS[i%COLORS.length]} items={fl.inversiones.filter(r=>r.tipo===c)} type="inversiones" onEdit={handleEdit} onDelete={handleDelete}/>)}
           </>}
 
-          {tab==="Presupuesto"&&<Presupuesto chartLoaded={chartLoaded}/>}
+          {tab==="Presupuesto"&&<Presupuesto chartLoaded={chartLoaded} token={token}/>}
 
           {tab==="Reportes"&&<>
             <PeriodFilter/>

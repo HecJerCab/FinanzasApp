@@ -45,7 +45,18 @@ module.exports = async function handler(req, res) {
     for (const t of types) {
       result[t] = await kvGet(`finanzas:${t}`) || [];
     }
+    result.presupuesto = await kvGet("finanzas:presupuesto") || null;
     return res.json({ success: true, data: result });
+  }
+
+  if (action === "savePresupuesto") {
+    await kvSet("finanzas:presupuesto", record);
+    return res.json({ success: true });
+  }
+
+  if (action === "getPresupuesto") {
+    const data = await kvGet("finanzas:presupuesto");
+    return res.json({ success: true, data });
   }
 
   if (action === "add") {
