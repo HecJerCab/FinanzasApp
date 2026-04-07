@@ -95,6 +95,49 @@ function BarChart({data,color=D.accent,moneda="ARS"}){
   return <div style={{position:"relative",height:180}}><canvas ref={ref}/></div>;
 }
 
+function BarChartDoble({ingresos,gastos,moneda="ARS"}){
+  const ref=useRef();
+  useEffect(()=>{
+    if(!ref.current||!window.Chart) return;
+    if(ref.current._chart) ref.current._chart.destroy();
+    // Unir todos los meses de ambas series
+    const allLabels=[...new Set([...ingresos.map(d=>d.label),...gastos.map(d=>d.label)])].sort();
+    const ingData=allLabels.map(l=>ingresos.find(d=>d.label===l)?.value||0);
+    const gasData=allLabels.map(l=>gastos.find(d=>d.label===l)?.value||0);
+    ref.current._chart=new window.Chart(ref.current.getContext("2d"),{
+      type:"bar",
+      data:{
+        labels:allLabels,
+        datasets:[
+          {label:"Ingresos",data:ingData,backgroundColor:D.green+"99",borderRadius:6,borderSkipped:false},
+          {label:"Gastos",data:gasData,backgroundColor:D.red+"99",borderRadius:6,borderSkipped:false}
+        ]
+      },
+      options:{
+        responsive:true,maintainAspectRatio:false,
+        plugins:{
+          legend:{display:false},
+          tooltip:{callbacks:{label:i=>`${i.dataset.label}: ${fmt(i.raw,moneda)}`},backgroundColor:D.surface2,titleColor:D.text,bodyColor:D.textMuted,borderColor:D.border,borderWidth:1}
+        },
+        scales:{
+          y:{ticks:{callback:v=>fmtShort(v,moneda),color:D.textMuted,font:{size:10}},grid:{color:D.border+"55"},border:{display:false}},
+          x:{grid:{display:false},ticks:{color:D.textMuted,font:{size:10},autoSkip:false,maxRotation:45},border:{display:false}}
+        }
+      }
+    });
+  },[ingresos,gastos]);
+  if(!ingresos?.length&&!gastos?.length) return <p style={{color:D.textMuted,fontSize:13,textAlign:"center",padding:"1rem"}}>Sin datos</p>;
+  return(
+    <div>
+      <div style={{display:"flex",gap:16,marginBottom:10}}>
+        <span style={{display:"flex",alignItems:"center",gap:6,fontSize:12,color:D.textMuted}}><span style={{width:10,height:10,borderRadius:2,background:D.green,display:"inline-block"}}/> Ingresos</span>
+        <span style={{display:"flex",alignItems:"center",gap:6,fontSize:12,color:D.textMuted}}><span style={{width:10,height:10,borderRadius:2,background:D.red,display:"inline-block"}}/> Gastos</span>
+      </div>
+      <div style={{position:"relative",height:200}}><canvas ref={ref}/></div>
+    </div>
+  );
+}
+
 function LineChart({data,color=D.accent,moneda="ARS"}){
   const ref=useRef();
   useEffect(()=>{
@@ -805,7 +848,20 @@ export default function App(){
               <StatCard label="Ahorrado" value={(records.ahorros||[]).filter(r=>r.moneda===moneda&&!r.nota?.startsWith("Aporte al proyecto")).reduce((s,r)=>s+r.monto,0)} color={D.accent} moneda={moneda} sub="historial"/>
               <StatCard label="En proyectos" value={(records.proyectos||[]).filter(r=>r.moneda===moneda).reduce((s,r)=>s+(r.acumulado||0),0)} color={D.purple} moneda={moneda} sub="acumulado total"/>
             </div>
-            {chartLoaded&&<><p style={{fontSize:12,fontWeight:600,color:D.textMuted,textTransform:"uppercase",letterSpacing:1,margin:"20px 0 10px"}}>Ingresos vs Gastos</p><div style={{background:D.surface,borderRadius:16,padding:"14px",border:`1px solid ${D.border}`,marginBottom:14}}><BarChart data={monthlyData(records.ingresos||[])} color={D.green} moneda={moneda}/></div><p style={{fontSize:12,fontWeight:600,color:D.textMuted,textTransform:"uppercase",letterSpacing:1,margin:"16px 0 10px"}}>Distribución de gastos</p><div style={{background:D.surface,borderRadius:16,padding:"14px",border:`1px solid ${D.border}`,marginBottom:14}}><PieChart data={CAT_GASTO.map(c=>({label:c,value:(records.gastos||[]).filter(r=>r.categoria===c&&r.moneda===moneda).reduce((s,r)=>s+r.monto,0),color:CAT_COLORS[c]})).filter(x=>x.value>0)}/></div></>}
+            {chartLoaded&&<>
+              <p style={{fontSize:12,fontWeight:600,color:D.textMuted,textTransform:"uppercase",letterSpacing:1,margin:"20px 0 10px"}}>Ingresos vs Gastos</p>
+              <div style={{background:D.surface,borderRadius:16,padding:"14px",border:`1px solid ${D.border}`,marginBottom:14}}>
+                <BarChartDoble
+                  ingresos={monthlyData(records.ingresos||[])}
+                  gastos={monthlyData(records.gastos||[])}
+                  moneda={moneda}
+                />
+              </div>
+              <p style={{fontSize:12,fontWeight:600,color:D.textMuted,textTransform:"uppercase",letterSpacing:1,margin:"16px 0 10px"}}>Distribución de gastos</p>
+              <div style={{background:D.surface,borderRadius:16,padding:"14px",border:`1px solid ${D.border}`,marginBottom:14}}>
+                <PieChart data={CAT_GASTO.map(c=>({label:c,value:(records.gastos||[]).filter(r=>r.categoria===c&&r.moneda===moneda).reduce((s,r)=>s+r.monto,0),color:CAT_COLORS[c]})).filter(x=>x.value>0)}/>
+              </div>
+            </>}
           </>}
 
           {tab==="Config"&&<>
