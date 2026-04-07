@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 
-const CAT_GASTO = ["(NB) Necesidades Basicas","(GF) Gastos Fijos","(GH) Gasto Hormiga","(GEX) Gasto Extra","(LZ) Limpieza","(CP) Cuidado Personal","(TP) Transporte-Auto"];
+const CAT_GASTO = ["(NB) Necesidades Basicas","(GF) Gastos Fijos","(GH) Gasto Hormiga","(GEX) Gasto Extra","(LZ) Limpieza","(CP) Cuidado Personal","(TP) Transporte-Auto","(GT) Gatos","(CD) Créditos","(SB) Subscripciones"];
 const CAT_INGRESO = ["Sueldo","Premio","Extra","Resto del Mes"];
 const CAT_INV = ["Plazo fijo","Acciones","Cripto","FCI","Dólares","Inmueble","Otro"];
 const CAT_AHORRO = ["Ahorro general","Fondo de emergencia","Vacaciones","Tecnología","Ropa","Otro"];
@@ -8,7 +8,7 @@ const MONEDAS = ["ARS","USD"];
 const TABS = ["Inicio","Ingresos","Gastos","Ahorro","Proyectos","Inversiones","Presupuesto","Reportes","Config"];
 const ICONS = {Inicio:"◉",Ingresos:"↑",Gastos:"↓",Ahorro:"♦",Proyectos:"★",Inversiones:"▲",Presupuesto:"⊞",Reportes:"≡",Config:"⚙"};
 const COLORS = ["#6c8ef7","#f7704f","#4fbe8a","#f7c44f","#a77cf7","#f74f9e","#4fd4f7","#50e3c2","#ff6b6b"];
-const CAT_COLORS = {"(NB) Necesidades Basicas":"#6c8ef7","(GF) Gastos Fijos":"#a77cf7","(GH) Gasto Hormiga":"#f7c44f","(GEX) Gasto Extra":"#f74f9e","(LZ) Limpieza":"#4fd4f7","(CP) Cuidado Personal":"#4fbe8a","(TP) Transporte-Auto":"#f7704f"};
+const CAT_COLORS = {"(NB) Necesidades Basicas":"#6c8ef7","(GF) Gastos Fijos":"#a77cf7","(GH) Gasto Hormiga":"#f7c44f","(GEX) Gasto Extra":"#f74f9e","(LZ) Limpieza":"#4fd4f7","(CP) Cuidado Personal":"#4fbe8a","(TP) Transporte-Auto":"#f7704f","(GT) Gatos":"#ff9f43","(CD) Créditos":"#ee5a24","(SB) Subscripciones":"#a29bfe"};
 
 const fmtARS = n => new Intl.NumberFormat("es-AR",{style:"currency",currency:"ARS",maximumFractionDigits:0}).format(n||0);
 const fmtUSD = n => new Intl.NumberFormat("es-AR",{style:"currency",currency:"USD",maximumFractionDigits:2}).format(n||0);
