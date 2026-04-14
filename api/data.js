@@ -40,7 +40,7 @@ module.exports = async function handler(req, res) {
   const { action, type, record, id } = req.body || {};
 
   if (action === "getAll") {
-    const types = ["ingresos","gastos","ahorros","proyectos","inversiones"];
+    const types = ["ingresos","gastos","ahorros","proyectos","inversiones","tarjetas","cuotas"];
     const result = {};
     for (const t of types) {
       result[t] = await kvGet(`finanzas:${t}`) || [];
