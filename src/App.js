@@ -225,7 +225,7 @@ function SwipeRow({record,type,onEdit,onDelete,color}){
   );
 }
 
-function EditModal({record,type,onSave,onClose,catGasto}){
+function EditModal({record,type,onSave,onClose,catGasto,catIngreso}){
   const [d,setD]=useState({...record});
   const upd=(k,v)=>setD(p=>({...p,[k]:v}));
   const catMap={ingresos:catIngreso,gastos:catGasto,ahorros:CAT_AHORRO,inversiones:CAT_INV};
@@ -1288,8 +1288,7 @@ export default function App(){
       </div>
 
       {showQuick&&<QuickAdd onSave={addRecord} onClose={()=>setShowQuick(false)} userName={userName}/>}
-      {editRecord&&editType&&<EditModal record={editRecord} type={editType} onSave={saveEdit} onClose={()=>{setEditRecord(null);setEditType(null);}} catGasto={catGasto}/>}      
-      {deleteInfo&&<ConfirmModal onConfirm={confirmDelete} onCancel={()=>setDeleteInfo(null)}/>}
+      {editRecord&&editType&&<EditModal record={editRecord} type={editType} onSave={saveEdit} onClose={()=>{setEditRecord(null);setEditType(null);}} catGasto={catGasto} catIngreso={catIngreso}/>}      {deleteInfo&&<ConfirmModal onConfirm={confirmDelete} onCancel={()=>setDeleteInfo(null)}/>}
     </div>
   );
 }
