@@ -228,7 +228,7 @@ function SwipeRow({record,type,onEdit,onDelete,color}){
 function EditModal({record,type,onSave,onClose}){
   const [d,setD]=useState({...record});
   const upd=(k,v)=>setD(p=>({...p,[k]:v}));
-  const catMap={ingresos:CAT_INGRESO,gastos:CAT_GASTO,ahorros:CAT_AHORRO,inversiones:CAT_INV};
+  const catMap={ingresos:CAT_INGRESO,gastos:catGasto,ahorros:CAT_AHORRO,inversiones:CAT_INV};
   return(
     <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.8)",zIndex:300,display:"flex",alignItems:"flex-end"}} onClick={onClose}>
       <div onClick={e=>e.stopPropagation()} style={{background:D.surface,borderRadius:"20px 20px 0 0",padding:"20px 16px 36px",width:"100%",border:`1px solid ${D.border}`,maxHeight:"90vh",overflowY:"auto"}} className="slide-in">
@@ -588,7 +588,7 @@ function QuickAdd({onSave,onClose,userName}){
   const [type,setType]=useState("gastos");
   const [d,setD]=useState({fecha:today(),persona:userName,moneda:"ARS"});
   const upd=(k,v)=>setD(p=>({...p,[k]:v}));
-  const cats={ingresos:CAT_INGRESO,gastos:CAT_GASTO,ahorros:CAT_AHORRO};
+  const cats={ingresos:CAT_INGRESO,gastos:catGasto,ahorros:CAT_AHORRO};
   return(
     <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.7)",zIndex:150,display:"flex",alignItems:"flex-end"}} onClick={onClose}>
       <div onClick={e=>e.stopPropagation()} style={{background:D.surface,borderRadius:"20px 20px 0 0",padding:"20px 16px 36px",width:"100%",border:`1px solid ${D.border}`}} className="slide-in">
@@ -643,7 +643,7 @@ function Presupuesto({chartLoaded}){
   const balance=(+ingreso||0)-totalGastos;
 
   const pieData=[
-    ...CAT_GASTO.map(c=>({label:c,value:items.filter(i=>i.cat===c).reduce((s,i)=>s+(+i.monto||0),0),color:CAT_COLORS[c]})).filter(x=>x.value>0),
+    ...catGasto.map(c=>({label:c,value:items.filter(i=>i.cat===c).reduce((s,i)=>s+(+i.monto||0),0),color:CAT_COLORS[c]})).filter(x=>x.value>0),
     ...(balance>0?[{label:"Disponible",value:balance,color:D.green}]:[])
   ];
 
@@ -670,7 +670,7 @@ function Presupuesto({chartLoaded}){
         <p style={{fontWeight:600,fontSize:14,marginBottom:12}}>Agregar ítem de gasto</p>
         <select value={newItem.cat} onChange={e=>setNewItem(p=>({...p,cat:e.target.value}))} style={{marginBottom:10}}>
           <option value="">Categoría...</option>
-          {CAT_GASTO.map(c=><option key={c}>{c}</option>)}
+          {catGasto.map(c=><option key={c}>{c}</option>)}
         </select>
         <input placeholder="Descripción (opcional)" value={newItem.desc} onChange={e=>setNewItem(p=>({...p,desc:e.target.value}))} style={{marginBottom:10}}/>
         <input type="number" placeholder="Monto" value={newItem.monto} onChange={e=>setNewItem(p=>({...p,monto:e.target.value}))} style={{marginBottom:10}}/>
@@ -684,7 +684,7 @@ function Presupuesto({chartLoaded}){
             <div key={it.id} style={{borderBottom:`1px solid ${D.border}33`,paddingBottom:8,marginBottom:8}}>
               {editIdx===idx?(
                 <div>
-                  <select value={it.cat} onChange={e=>setItems(p=>p.map((x,i)=>i===idx?{...x,cat:e.target.value}:x))} style={{marginBottom:6}}><option value="">Categoría...</option>{CAT_GASTO.map(c=><option key={c}>{c}</option>)}</select>
+                  <select value={it.cat} onChange={e=>setItems(p=>p.map((x,i)=>i===idx?{...x,cat:e.target.value}:x))} style={{marginBottom:6}}><option value="">Categoría...</option>{catGasto.map(c=><option key={c}>{c}</option>)}</select>
                   <input placeholder="Descripción" value={it.desc} onChange={e=>setItems(p=>p.map((x,i)=>i===idx?{...x,desc:e.target.value}:x))} style={{marginBottom:6}}/>
                   <input type="number" placeholder="Monto" value={it.monto} onChange={e=>setItems(p=>p.map((x,i)=>i===idx?{...x,monto:e.target.value}:x))} style={{marginBottom:6}}/>
                   <button onClick={()=>setEditIdx(null)} style={{width:"100%",padding:"8px",borderRadius:8,border:"none",background:D.green,color:"#fff",fontSize:13,fontWeight:600}}>✓ Listo</button>
@@ -917,7 +917,7 @@ export default function App(){
   const totalG=fl.gastos.reduce((s,r)=>s+r.monto,0);
   const totalA=fl.ahorros.reduce((s,r)=>s+r.monto,0);
   const balance=totalI-totalG-totalA;
-  const gastosPorCat=CAT_GASTO.map(c=>({label:c,value:fl.gastos.filter(r=>r.categoria===c).reduce((s,r)=>s+r.monto,0),color:CAT_COLORS[c]})).filter(x=>x.value>0).sort((a,b)=>b.value-a.value);
+  const gastosPorCat=catGasto.map(c=>({label:c,value:fl.gastos.filter(r=>r.categoria===c).reduce((s,r)=>s+r.monto,0),color:CAT_COLORS[c]})).filter(x=>x.value>0).sort((a,b)=>b.value-a.value);
   const ingresosPorCat=CAT_INGRESO.map((c,i)=>({label:c,value:fl.ingresos.filter(r=>r.categoria===c).reduce((s,r)=>s+r.monto,0),color:COLORS[i]})).filter(x=>x.value>0);
   const invPorTipo=CAT_INV.map((c,i)=>({label:c,value:fl.inversiones.filter(r=>r.tipo===c).reduce((s,r)=>s+r.monto,0),color:COLORS[i]})).filter(x=>x.value>0);
   const monthlyData=arr=>{const m={};arr.filter(r=>r.moneda===moneda).forEach(r=>{if(!r.fecha) return;const k=r.fecha.slice(0,7);m[k]=(m[k]||0)+r.monto;});return Object.entries(m).sort().slice(-6).map(([k,v])=>({label:k.slice(5)+"/"+k.slice(2,4),value:v}));};
@@ -1045,11 +1045,11 @@ export default function App(){
           </>}
 
           {tab==="Gastos"&&<>
-            <AddForm type="gastos" fields={[{id:"titulo",label:"Descripción",placeholder:"Ej: Supermercado"},{id:"monto",label:"Monto",type:"number"},{id:"moneda",label:"Moneda",options:MONEDAS},{id:"categoria",label:"Categoría",options:CAT_GASTO},{id:"persona",label:"¿Quién pagó?"},{id:"fecha",label:"Fecha",type:"date"},{id:"nota",label:"Nota"}]}/>
+            <AddForm type="gastos" fields={[{id:"titulo",label:"Descripción",placeholder:"Ej: Supermercado"},{id:"monto",label:"Monto",type:"number"},{id:"moneda",label:"Moneda",options:MONEDAS},{id:"categoria",label:"Categoría",options:catGasto},{id:"persona",label:"¿Quién pagó?"},{id:"fecha",label:"Fecha",type:"date"},{id:"nota",label:"Nota"}]}/>
             <PeriodFilter/>
             {chartLoaded&&fl.gastos.length>0&&<><div style={{background:D.surface,borderRadius:16,padding:"14px",border:`1px solid ${D.border}`,marginBottom:14}}><PieChart data={gastosPorCat}/></div><div style={{background:D.surface,borderRadius:16,padding:"14px",border:`1px solid ${D.border}`,marginBottom:14}}><BarChart data={monthlyData(records.gastos||[])} color={D.red} moneda={moneda}/></div></>}
             <p style={{fontSize:12,fontWeight:600,color:D.textMuted,textTransform:"uppercase",letterSpacing:1,margin:"16px 0 8px"}}>Por categoría</p>
-            {CAT_GASTO.map(c=><CatAccordion key={c} title={c} color={CAT_COLORS[c]||D.accent} items={fl.gastos.filter(r=>r.categoria===c)} type="gastos" onEdit={handleEdit} onDelete={handleDelete}/>)}
+            {catGasto.map(c=><CatAccordion key={c} title={c} color={CAT_COLORS[c]||D.accent} items={fl.gastos.filter(r=>r.categoria===c)} type="gastos" onEdit={handleEdit} onDelete={handleDelete}/>)}
           </>}
 
           {tab==="Ahorro"&&<>
@@ -1245,7 +1245,7 @@ export default function App(){
               </div>
               <p style={{fontSize:12,fontWeight:600,color:D.textMuted,textTransform:"uppercase",letterSpacing:1,margin:"16px 0 10px"}}>Distribución de gastos</p>
               <div style={{background:D.surface,borderRadius:16,padding:"14px",border:`1px solid ${D.border}`,marginBottom:14}}>
-                <PieChart data={CAT_GASTO.map(c=>({label:c,value:(records.gastos||[]).filter(r=>r.categoria===c&&r.moneda===moneda).reduce((s,r)=>s+r.monto,0),color:CAT_COLORS[c]})).filter(x=>x.value>0)}/>
+                <PieChart data={catGasto.map(c=>({label:c,value:(records.gastos||[]).filter(r=>r.categoria===c&&r.moneda===moneda).reduce((s,r)=>s+r.monto,0),color:CAT_COLORS[c]})).filter(x=>x.value>0)}/>
               </div>
             </>}
           </>}
