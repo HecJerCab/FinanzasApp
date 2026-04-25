@@ -747,39 +747,62 @@ function Presupuesto({chartLoaded}){
 
 // ── LOGIN SCREENS ─────────────────────────────────────────────────────────────
 function LoginScreen({onLogin}){
-  const [username,setUsername]=useState("");
-  const [password,setPassword]=useState("");
-  const [totpCode,setTotpCode]=useState("");
   const [loading,setLoading]=useState(false);
   const [error,setError]=useState("");
-  const [showPass,setShowPass]=useState(false);
-  const doLogin=async()=>{
-    if(!username||!password||!totpCode){setError("Completá todos los campos");return;}
-    setLoading(true);setError("");
-    const r=await apiAuth({action:"login",username,password,totpCode});
+
+  useEffect(()=>{
+    if(window._googleScriptLoaded){
+      window.google.accounts.id.initialize({
+        client_id: process.env.REACT_APP_GOOGLE_CLIENT_ID,
+        callback: handleCredential
+      });
+      window.google.accounts.id.renderButton(
+        document.getElementById("google-btn"),
+        { theme:"filled_black", size:"large", width:300, text:"signin_with" }
+      );
+      return;
+    }
+    const script=document.createElement("script");
+    script.src="https://accounts.google.com/gsi/client";
+    script.async=true;
+    script.defer=true;
+    script.onload=()=>{
+      window._googleScriptLoaded=true;
+      window.google.accounts.id.initialize({
+        client_id: process.env.REACT_APP_GOOGLE_CLIENT_ID,
+        callback: handleCredential
+      });
+      window.google.accounts.id.renderButton(
+        document.getElementById("google-btn"),
+        { theme:"filled_black", size:"large", width:300, text:"signin_with" }
+      );
+    };
+    document.head.appendChild(script);
+  },[]);
+
+  const handleCredential=async(response)=>{
+    setLoading(true);
+    setError("");
+    const r=await apiAuth({action:"googleLogin", credential:response.credential});
     if(r.error){setError(r.error);setLoading(false);return;}
-    localStorage.setItem("nf_jwt",r.token);localStorage.setItem("nf_user",r.username);
+    localStorage.setItem("nf_jwt",r.token);
+    localStorage.setItem("nf_user",r.username);
     onLogin(r.token,r.username);
   };
+
   return(
     <div style={{maxWidth:420,margin:"0 auto",padding:"2rem",minHeight:"100vh",display:"flex",flexDirection:"column",justifyContent:"center"}}>
       <div style={{textAlign:"center",marginBottom:"2rem"}}>
         <p style={{fontSize:36,marginBottom:8}}>💸</p>
         <h2 style={{fontSize:22,fontWeight:700,marginBottom:6}}>FinanzasApp</h2>
-        <p style={{color:D.textMuted,fontSize:14}}>Iniciá sesión para continuar</p>
+        <p style={{color:D.textMuted,fontSize:14}}>Iniciá sesión con tu cuenta de Google</p>
       </div>
-      <div style={{background:D.surface,borderRadius:16,padding:"20px",border:`1px solid ${D.border}`}}>
-        <label style={{display:"block",fontSize:11,color:D.textMuted,marginBottom:4,fontWeight:500,textTransform:"uppercase",letterSpacing:.3}}>Usuario</label>
-        <input style={{marginBottom:12}} placeholder="Tu usuario" value={username} onChange={e=>setUsername(e.target.value)}/>
-        <label style={{display:"block",fontSize:11,color:D.textMuted,marginBottom:4,fontWeight:500,textTransform:"uppercase",letterSpacing:.3}}>Contraseña</label>
-        <div style={{position:"relative",marginBottom:12}}>
-          <input type={showPass?"text":"password"} placeholder="Tu contraseña" value={password} onChange={e=>setPassword(e.target.value)} style={{paddingRight:44}}/>
-          <button onClick={()=>setShowPass(p=>!p)} style={{position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",color:D.textMuted,fontSize:18,padding:0}}>{showPass?"🙈":"👁️"}</button>
-        </div>
-        <label style={{display:"block",fontSize:11,color:D.textMuted,marginBottom:4,fontWeight:500,textTransform:"uppercase",letterSpacing:.3}}>Código Google Authenticator</label>
-        <input style={{marginBottom:14}} type="number" placeholder="000000" value={totpCode} onChange={e=>setTotpCode(e.target.value.slice(0,6))}/>
-        {error&&<p style={{fontSize:12,color:D.red,marginBottom:10,fontWeight:500}}>{error}</p>}
-        <button onClick={doLogin} disabled={loading} style={{width:"100%",padding:"14px",borderRadius:12,border:"none",background:D.accent,color:"#fff",fontSize:15,fontWeight:600}}>{loading?"Verificando...":"Iniciar sesión ↗"}</button>
+      <div style={{background:D.surface,borderRadius:16,padding:"28px 20px",border:`1px solid ${D.border}`,display:"flex",flexDirection:"column",alignItems:"center",gap:16}}>
+        {loading
+          ? <p style={{color:D.textMuted,fontSize:14}}>Verificando...</p>
+          : <div id="google-btn"></div>
+        }
+        {error&&<p style={{fontSize:13,color:D.red,fontWeight:500,textAlign:"center"}}>{error}</p>}
       </div>
     </div>
   );
