@@ -45,11 +45,11 @@ const css = `
 `;
 
 async function apiAuth(body, token) {
-  const r = await fetch("http://localhost:3001/api/auth", { method:"POST", headers:{"Content-Type":"application/json",...(token?{Authorization:`Bearer ${token}`}:{})}, body:JSON.stringify(body) });
+  const r = await fetch("api/auth", { method:"POST", headers:{"Content-Type":"application/json",...(token?{Authorization:`Bearer ${token}`}:{})}, body:JSON.stringify(body) });
   return r.json();
 }
 async function apiData(body, token) {
-  const r = await fetch("http://localhost:3001/api/data", { method:"POST", headers:{"Content-Type":"application/json",Authorization:`Bearer ${token}`}, body:JSON.stringify(body) });
+  const r = await fetch("api/data", { method:"POST", headers:{"Content-Type":"application/json",Authorization:`Bearer ${token}`}, body:JSON.stringify(body) });
   return r.json();
 }
 
