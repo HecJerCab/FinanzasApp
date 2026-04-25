@@ -228,7 +228,7 @@ function SwipeRow({record,type,onEdit,onDelete,color}){
 function EditModal({record,type,onSave,onClose,catGasto}){
   const [d,setD]=useState({...record});
   const upd=(k,v)=>setD(p=>({...p,[k]:v}));
-  const catMap={ingresos:CAT_INGRESO,gastos:catGasto,ahorros:CAT_AHORRO,inversiones:CAT_INV};
+  const catMap={ingresos:catIngreso,gastos:catGasto,ahorros:CAT_AHORRO,inversiones:CAT_INV};
   return(
     <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.8)",zIndex:300,display:"flex",alignItems:"flex-end"}} onClick={onClose}>
       <div onClick={e=>e.stopPropagation()} style={{background:D.surface,borderRadius:"20px 20px 0 0",padding:"20px 16px 36px",width:"100%",border:`1px solid ${D.border}`,maxHeight:"90vh",overflowY:"auto"}} className="slide-in">
@@ -588,7 +588,7 @@ function QuickAdd({onSave,onClose,userName}){
   const [type,setType]=useState("gastos");
   const [d,setD]=useState({fecha:today(),persona:userName,moneda:"ARS"});
   const upd=(k,v)=>setD(p=>({...p,[k]:v}));
-  const cats={ingresos:CAT_INGRESO,gastos:catGasto,ahorros:CAT_AHORRO};
+  const cats={ingresos:catIngreso,gastos:catGasto,ahorros:CAT_AHORRO};
   return(
     <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.7)",zIndex:150,display:"flex",alignItems:"flex-end"}} onClick={onClose}>
       <div onClick={e=>e.stopPropagation()} style={{background:D.surface,borderRadius:"20px 20px 0 0",padding:"20px 16px 36px",width:"100%",border:`1px solid ${D.border}`}} className="slide-in">
@@ -924,7 +924,7 @@ export default function App(){
   const totalA=fl.ahorros.reduce((s,r)=>s+r.monto,0);
   const balance=totalI-totalG-totalA;
   const gastosPorCat=catGasto.map(c=>({label:c,value:fl.gastos.filter(r=>r.categoria===c).reduce((s,r)=>s+r.monto,0),color:CAT_COLORS[c]})).filter(x=>x.value>0).sort((a,b)=>b.value-a.value);
-  const ingresosPorCat=CAT_INGRESO.map((c,i)=>({label:c,value:fl.ingresos.filter(r=>r.categoria===c).reduce((s,r)=>s+r.monto,0),color:COLORS[i]})).filter(x=>x.value>0);
+  const ingresosPorCat=catIngreso.map((c,i)=>({label:c,value:fl.ingresos.filter(r=>r.categoria===c).reduce((s,r)=>s+r.monto,0),color:COLORS[i]})).filter(x=>x.value>0);
   const invPorTipo=CAT_INV.map((c,i)=>({label:c,value:fl.inversiones.filter(r=>r.tipo===c).reduce((s,r)=>s+r.monto,0),color:COLORS[i]})).filter(x=>x.value>0);
   const monthlyData=arr=>{const m={};arr.filter(r=>r.moneda===moneda).forEach(r=>{if(!r.fecha) return;const k=r.fecha.slice(0,7);m[k]=(m[k]||0)+r.monto;});return Object.entries(m).sort().slice(-6).map(([k,v])=>({label:k.slice(5)+"/"+k.slice(2,4),value:v}));};
 
@@ -1042,7 +1042,7 @@ export default function App(){
            {(records.proyectos||[]).length>0&&<ProyectosCarrusel proyectos={records.proyectos||[]}/>}</>}
 
           {tab==="Ingresos"&&<>
-            <AddForm type="ingresos" fields={[{id:"titulo",label:"Descripción",placeholder:"Ej: Sueldo"},{id:"monto",label:"Monto",type:"number"},{id:"moneda",label:"Moneda",options:MONEDAS},{id:"categoria",label:"Categoría",options:CAT_INGRESO},{id:"persona",label:"¿Quién?"},{id:"fecha",label:"Fecha",type:"date"},{id:"nota",label:"Nota"}]}/>
+            <AddForm type="ingresos" fields={[{id:"titulo",label:"Descripción",placeholder:"Ej: Sueldo"},{id:"monto",label:"Monto",type:"number"},{id:"moneda",label:"Moneda",options:MONEDAS},{id:"categoria",label:"Categoría",options:catIngreso},{id:"persona",label:"¿Quién?"},{id:"fecha",label:"Fecha",type:"date"},{id:"nota",label:"Nota"}]}/>
             <PeriodFilter/>
             {chartLoaded&&fl.ingresos.length>0&&<><div style={{background:D.surface,borderRadius:16,padding:"14px",border:`1px solid ${D.border}`,marginBottom:14}}><PieChart data={ingresosPorCat}/></div><div style={{background:D.surface,borderRadius:16,padding:"14px",border:`1px solid ${D.border}`,marginBottom:14}}><LineChart data={monthlyData(records.ingresos||[])} color={D.green} moneda={moneda}/></div></>}
             <p style={{fontSize:12,fontWeight:600,color:D.textMuted,textTransform:"uppercase",letterSpacing:1,margin:"16px 0 8px"}}>Registros</p>
