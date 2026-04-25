@@ -92,6 +92,14 @@ module.exports = async function handler(req, res) {
     await kvSet(`finanzas:${prefix}:${type}`, filtered);
     return res.json({ success: true });
   }
+if (action === "getCategorias") {
+    const data = await kvGet(`finanzas:${prefix}:categorias_gasto`);
+    return res.json({ success: true, data });
+  }
 
+  if (action === "saveCategorias") {
+    await kvSet(`finanzas:${prefix}:categorias_gasto`, record);
+    return res.json({ success: true });
+  }
   res.status(400).json({ error: "Acción inválida" });
 };
