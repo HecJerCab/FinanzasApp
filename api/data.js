@@ -101,5 +101,14 @@ if (action === "getCategorias") {
     await kvSet(`finanzas:${prefix}:categorias_gasto`, record);
     return res.json({ success: true });
   }
+  if (action === "getCategoriasIngreso") {
+    const data = await kvGet(`finanzas:${prefix}:categorias_ingreso`);
+    return res.json({ success: true, data });
+  }
+
+  if (action === "saveCategoriasIngreso") {
+    await kvSet(`finanzas:${prefix}:categorias_ingreso`, record);
+    return res.json({ success: true });
+  }
   res.status(400).json({ error: "Acción inválida" });
 };

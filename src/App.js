@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 
 const CAT_GASTO_DEFAULT = ["(NB) Necesidades Basicas","(GF) Gastos Fijos","(GH) Gasto Hormiga","(GEX) Gasto Extra","(LZ) Limpieza","(CP) Cuidado Personal","(TP) Transporte-Auto","(GT) Gatos","(CD) Créditos","(SB) Subscripciones"];
-const CAT_INGRESO = ["Sueldo","Premio","Extra","Resto del Mes"];
+const CAT_INGRESO_DEFAULT = ["Sueldo","Premio","Extra","Resto del Mes"];
 const CAT_INV = ["Plazo fijo","Acciones","Cripto","FCI","Dólares","Inmueble","Otro"];
 const CAT_AHORRO = ["Ahorro general","Fondo de emergencia","Vacaciones","Tecnología","Ropa","Otro"];
 const MONEDAS = ["ARS","USD"];
@@ -813,6 +813,8 @@ export default function App(){
   const [authState,setAuthState]=useState("loading");
   const [catGasto,setCatGasto]=useState(CAT_GASTO_DEFAULT);
   const [catGastoLoaded,setCatGastoLoaded]=useState(false);
+  const [catIngreso,setCatIngreso]=useState(CAT_INGRESO_DEFAULT);
+  const [catIngresoLoaded,setCatIngresoLoaded]=useState(false);
   const [token,setToken]=useState("");
   const [userName,setUserName]=useState("");
   const [tab,setTab]=useState("Inicio");
@@ -862,6 +864,10 @@ export default function App(){
     const cats=await apiData({action:"getCategorias"},t);
     if(cats.success&&cats.data&&Array.isArray(cats.data)) setCatGasto(cats.data);
     else setCatGasto(CAT_GASTO_DEFAULT);
+    const catsIngreso=await apiData({action:"getCategoriasIngreso"},t);
+    if(catsIngreso.success&&catsIngreso.data&&Array.isArray(catsIngreso.data)) setCatIngreso(catsIngreso.data);
+    else setCatIngreso(CAT_INGRESO_DEFAULT);
+    setCatIngresoLoaded(true);
     setCatGastoLoaded(true);
     setLoading(false);
   };
@@ -1251,37 +1257,31 @@ export default function App(){
           </>}
 
           {tab==="Config"&&<>
-    <div style={{background:D.surface,borderRadius:16,padding:"16px",marginTop:16,border:`1px solid ${D.border}`,marginBottom:12}}>
-      <p style={{fontWeight:600,marginBottom:4}}>Sesión activa</p>
-      <p style={{fontSize:13,color:D.textMuted,marginBottom:12}}>Usuario: <span style={{color:D.text,fontWeight:500}}>{userName}</span></p>
-      <button onClick={()=>{localStorage.removeItem("nf_jwt");localStorage.removeItem("nf_user");setAuthState("login");}} style={{width:"100%",padding:"12px",borderRadius:10,border:`1px solid ${D.red}44`,background:D.red+"11",color:D.red,fontSize:14,fontWeight:500}}>Cerrar sesión</button>
-    </div>
-
-    <div style={{background:D.surface,borderRadius:16,padding:"16px",border:`1px solid ${D.border}`,marginBottom:12}}>
-      <p style={{fontWeight:600,marginBottom:12}}>Categorías de Gastos</p>
-      {catGasto.map((cat,idx)=>(
+   <div style={{background:D.surface,borderRadius:16,padding:"16px",border:`1px solid ${D.border}`,marginBottom:12}}>
+      <p style={{fontWeight:600,marginBottom:12}}>Categorías de Ingresos</p>
+      {catIngreso.map((cat,idx)=>(
         <div key={idx} style={{display:"flex",gap:8,marginBottom:8,alignItems:"center"}}>
           <input
             value={cat}
             onChange={e=>{
-              const nueva=[...catGasto];
+              const nueva=[...catIngreso];
               nueva[idx]=e.target.value;
-              setCatGasto(nueva);
+              setCatIngreso(nueva);
             }}
             style={{flex:1}}
           />
           <button onClick={()=>{
-            const nueva=catGasto.filter((_,i)=>i!==idx);
-            setCatGasto(nueva);
+            const nueva=catIngreso.filter((_,i)=>i!==idx);
+            setCatIngreso(nueva);
           }} style={{background:D.red+"22",border:`1px solid ${D.red}44`,borderRadius:8,padding:"8px 12px",color:D.red,fontSize:13,fontWeight:600,flexShrink:0}}>✕</button>
         </div>
       ))}
-      <button onClick={()=>setCatGasto(p=>[...p,"Nueva categoría"])} style={{width:"100%",padding:"10px",borderRadius:10,border:`1px solid ${D.accent}44`,background:D.accent+"11",color:D.accent,fontSize:13,fontWeight:600,marginTop:4}}>+ Agregar categoría</button>
+      <button onClick={()=>setCatIngreso(p=>[...p,"Nueva categoría"])} style={{width:"100%",padding:"10px",borderRadius:10,border:`1px solid ${D.green}44`,background:D.green+"11",color:D.green,fontSize:13,fontWeight:600,marginTop:4}}>+ Agregar categoría</button>
       <button onClick={async()=>{
-        await apiData({action:"saveCategorias",record:catGasto},token);
+        await apiData({action:"saveCategoriasIngreso",record:catIngreso},token);
         showMsg("✓ Categorías guardadas");
-      }} style={{width:"100%",padding:"12px",borderRadius:10,border:"none",background:D.accent,color:"#fff",fontSize:14,fontWeight:600,marginTop:8}}>💾 Guardar categorías</button>
-      <button onClick={()=>setCatGasto(CAT_GASTO_DEFAULT)} style={{width:"100%",padding:"10px",borderRadius:10,border:`1px solid ${D.border}`,background:D.surface2,color:D.textMuted,fontSize:13,marginTop:6}}>↺ Restaurar predeterminadas</button>
+      }} style={{width:"100%",padding:"12px",borderRadius:10,border:"none",background:D.green,color:"#fff",fontSize:14,fontWeight:600,marginTop:8}}>💾 Guardar categorías</button>
+      <button onClick={()=>setCatIngreso(CAT_INGRESO_DEFAULT)} style={{width:"100%",padding:"10px",borderRadius:10,border:`1px solid ${D.border}`,background:D.surface2,color:D.textMuted,fontSize:13,marginTop:6}}>↺ Restaurar predeterminadas</button>
     </div>
   </>}
         </div>
