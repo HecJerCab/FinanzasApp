@@ -856,6 +856,7 @@ export default function App(){
   const [deleteInfo,setDeleteInfo]=useState(null);
   const [sidebarOpen,setSidebarOpen]=useState(false);
   const [desktop,setDesktop]=useState(isDesktop());
+  const [verArchivadas,setVerArchivadas]=useState({});
 
   useEffect(()=>{
     const h=()=>setDesktop(isDesktop());
@@ -1156,7 +1157,8 @@ export default function App(){
             {(records.tarjetas||[]).length>0&&<>
               <p style={{fontSize:12,fontWeight:600,color:D.textMuted,textTransform:"uppercase",letterSpacing:1,margin:"8px 0 12px"}}>Tarjetas activas</p>
               {(records.tarjetas||[]).map(tarj=>{
-                const cuotasTarj=(records.cuotas||[]).filter(c=>c.tarjetaId===tarj.id);
+                const cuotasTarj=(records.cuotas||[]).filter(c=>c.tarjetaId===tarj.id&&!c.archivada);
+                const cuotasArchivadas=(records.cuotas||[]).filter(c=>c.tarjetaId===tarj.id&&c.archivada);
                 const hoy=new Date();
 
                 // Para cada cuota calculamos cuántas cuotas ya pasaron desde el mes de inicio
@@ -1242,12 +1244,40 @@ export default function App(){
                               <div style={{display:"flex",gap:6,marginTop:8}}>
                                 <button onClick={()=>handleEdit(c,"cuotas")} style={{flex:1,padding:"6px",borderRadius:8,border:`1px solid ${D.accent}44`,background:D.accent+"11",color:D.accent,fontSize:12}}>✏️ Editar</button>
                                 <button onClick={()=>handleDelete(c.id,"cuotas")} style={{flex:1,padding:"6px",borderRadius:8,border:`1px solid ${D.red}44`,background:D.red+"11",color:D.red,fontSize:12}}>🗑️ Eliminar</button>
+                                <div style={{display:"flex",gap:6,marginTop:8}}>
+                                <button onClick={()=>handleEdit(c,"cuotas")} style={{flex:1,padding:"6px",borderRadius:8,border:`1px solid ${D.accent}44`,background:D.accent+"11",color:D.accent,fontSize:12}}>✏️ Editar</button>
+                                <button onClick={async()=>{
+                                  await apiData({action:"update",type:"cuotas",record:{...c,archivada:true}},token);
+                                  showMsg("Cuota archivada");loadAll();
+                                }} style={{flex:1,padding:"6px",borderRadius:8,border:`1px solid ${D.yellow}44`,background:D.yellow+"11",color:D.yellow,fontSize:12}}>📦 Archivar</button>
+                                <button onClick={()=>handleDelete(c.id,"cuotas")} style={{flex:1,padding:"6px",borderRadius:8,border:`1px solid ${D.red}44`,background:D.red+"11",color:D.red,fontSize:12}}>🗑️ Eliminar</button>
+                              </div>
                               </div>
                             </div>
                           );
                         })}
                       </div>
-
+                        {cuotasArchivadas.length>0&&<>
+                              <button onClick={()=>setVerArchivadas(p=>({...p,[tarj.id]:!p[tarj.id]}))} style={{width:"100%",padding:"8px",borderRadius:8,border:`1px solid ${D.border}`,background:D.surface2,color:D.textMuted,fontSize:12,marginTop:8}}>
+                                {verArchivadas[tarj.id]?"▲ Ocultar":"▼ Ver"} archivadas ({cuotasArchivadas.length})
+                              </button>
+                              {verArchivadas[tarj.id]&&cuotasArchivadas.map(c=>{
+                                const {montoCuota,totalCuotas,mesesPagados,pct}=calcCuota(c);
+                                return(
+                                  <div key={c.id} style={{marginTop:8,padding:"10px",borderRadius:10,border:`1px solid ${D.border}`,opacity:0.5}}>
+                                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                                      <p style={{fontSize:13,fontWeight:600,margin:0}}>{c.nombre}</p>
+                                      <span style={{fontSize:11,color:D.green}}>📦 Archivada</span>
+                                    </div>
+                                    <p style={{fontSize:12,color:D.textMuted,margin:"4px 0 0"}}>{mesesPagados}/{totalCuotas} cuotas · {fmt(montoCuota,tarj.moneda||"ARS")}/mes</p>
+                                    <button onClick={async()=>{
+                                      await apiData({action:"update",type:"cuotas",record:{...c,archivada:false}},token);
+                                      showMsg("Cuota restaurada");loadAll();
+                                    }} style={{marginTop:6,padding:"5px 10px",borderRadius:8,border:`1px solid ${D.green}44`,background:D.green+"11",color:D.green,fontSize:11}}>↩ Restaurar</button>
+                                  </div>
+                                );
+                              })}
+                            </>}
                       {/* Totales tarjeta */}
                       <div style={{display:"flex",justifyContent:"space-between",padding:"10px 0 0",borderTop:`1px solid ${D.border}`}}>
                         <span style={{fontSize:12,color:D.textMuted}}>Deuda total tarjeta</span>
