@@ -1117,7 +1117,7 @@ export default function App(){
               }}/>
             </div>
 
-            {/* AGREGAR CUOTA/CREDITO */}
+            {/* AGREGAR CUOTA */}
             <div style={{background:D.surface,borderRadius:16,padding:"16px",marginBottom:14,border:`1px solid ${D.border}`}}>
               <p style={{fontWeight:600,fontSize:14,marginBottom:12}}>Nueva compra en cuotas</p>
               <CuotaForm tarjetas={records.tarjetas||[]} onSave={async(data)=>{
@@ -1130,79 +1130,110 @@ export default function App(){
             {/* VISTA POR TARJETA */}
             {(records.tarjetas||[]).length>0&&<>
               <p style={{fontSize:12,fontWeight:600,color:D.textMuted,textTransform:"uppercase",letterSpacing:1,margin:"8px 0 12px"}}>Tarjetas activas</p>
-              {(records.tarjetas||[]).map(t=>{
-                const cuotasTarjeta=(records.cuotas||[]).filter(c=>c.tarjetaId===t.id);
+              {(records.tarjetas||[]).map(tarj=>{
+                const cuotasTarj=(records.cuotas||[]).filter(c=>c.tarjetaId===tarj.id);
                 const hoy=new Date();
-                const mesActual=`${hoy.getFullYear()}-${String(hoy.getMonth()+1).padStart(2,"0")}`;
-                const totalMes=cuotasTarjeta.reduce((s,c)=>{
-                  const inicio=new Date(c.fechaInicio);
-                  const mesInicio=`${inicio.getFullYear()}-${String(inicio.getMonth()+1).padStart(2,"0")}`;
-                  if(mesActual>=mesInicio){
-                    const mesesTranscurridos=Math.floor((hoy-inicio)/(1000*60*60*24*30));
-                    if(mesesTranscurridos<(c.cuotasTotal||c.cuotasRestantes||0)){
-                      return s+(c.montoCuota||Math.round((c.montoTotal||0)/(c.cuotasTotal||1)));
-                    }
-                  }
-                  return s;
+
+                // Para cada cuota calculamos cuántas cuotas ya pasaron desde el mes de inicio
+                const calcCuota=(c)=>{
+                  const montoCuota=c.montoCuota||Math.round((c.montoTotal||0)/(c.cuotasTotal||1));
+                  const totalCuotas=c.cuotasTotal||c.cuotasRestantes||0;
+                  const [anio,mes]=c.fechaInicio.split("-").map(Number);
+                  const inicioDate=new Date(anio,mes-1,1);
+                  // Meses transcurridos desde inicio hasta hoy
+                  const mesesTranscurridos=(hoy.getFullYear()-inicioDate.getFullYear())*12+(hoy.getMonth()-inicioDate.getMonth());
+                  const mesesPagados=Math.max(0,Math.min(totalCuotas, mesesTranscurridos));
+                  const cuotasRestantes=Math.max(0,totalCuotas-mesesPagados);
+                  const pagado=montoCuota*mesesPagados;
+                  const deuda=montoCuota*cuotasRestantes;
+                  const pct=totalCuotas>0?Math.round((mesesPagados/totalCuotas)*100):0;
+                  return{montoCuota,totalCuotas,mesesPagados,cuotasRestantes,pagado,deuda,pct};
+                };
+
+                const totalMes=cuotasTarj.reduce((s,c)=>{
+                  const {montoCuota,cuotasRestantes}=calcCuota(c);
+                  return cuotasRestantes>0?s+montoCuota:s;
                 },0);
-                const deudaTotal=cuotasTarjeta.reduce((s,c)=>{
-                  const cuotaAct=c.montoCuota||Math.round((c.montoTotal||0)/(c.cuotasTotal||1));
-                  return s+(cuotaAct*(c.cuotasRestantes||c.cuotasTotal||0));
-                },0);
+                const deudaTotal=cuotasTarj.reduce((s,c)=>s+calcCuota(c).deuda,0);
+
                 return(
-                  <div key={t.id} style={{background:D.surface,borderRadius:16,padding:"16px",marginBottom:12,border:`1px solid ${D.border}`}}>
+                  <div key={tarj.id} style={{background:D.surface,borderRadius:16,padding:"16px",marginBottom:12,border:`1px solid ${D.border}`}}>
+                    {/* Header tarjeta */}
                     <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12}}>
                       <div>
-                        <p style={{fontWeight:700,fontSize:16,margin:"0 0 4px"}}>{t.banco}</p>
-                        <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-                          <span style={{fontSize:11,background:D.accent+"22",color:D.accent,padding:"2px 8px",borderRadius:20}}>Cierre: día {t.diaCierre}</span>
-                          <span style={{fontSize:11,background:D.red+"22",color:D.red,padding:"2px 8px",borderRadius:20}}>Vence: día {t.diaVencimiento}</span>
-                          {t.limite>0&&<span style={{fontSize:11,background:D.green+"22",color:D.green,padding:"2px 8px",borderRadius:20}}>Límite: {fmt(t.limite,t.moneda)}</span>}
+                        <p style={{fontWeight:700,fontSize:16,margin:"0 0 6px"}}>{tarj.banco}</p>
+                        <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                          <span style={{fontSize:11,background:D.accent+"22",color:D.accent,padding:"2px 8px",borderRadius:20}}>Cierre: día {tarj.diaCierre}</span>
+                          <span style={{fontSize:11,background:D.red+"22",color:D.red,padding:"2px 8px",borderRadius:20}}>Vence: día {tarj.diaVencimiento}</span>
+                          {tarj.limite>0&&<span style={{fontSize:11,background:D.green+"22",color:D.green,padding:"2px 8px",borderRadius:20}}>Límite: {fmt(tarj.limite,tarj.moneda)}</span>}
                         </div>
                       </div>
                       <div style={{textAlign:"right"}}>
                         <p style={{fontSize:11,color:D.textMuted,margin:"0 0 2px"}}>Este mes</p>
-                        <p style={{fontSize:18,fontWeight:700,color:D.red,margin:0}}>{fmt(totalMes,t.moneda||"ARS")}</p>
+                        <p style={{fontSize:18,fontWeight:700,color:D.red,margin:0}}>{fmt(totalMes,tarj.moneda||"ARS")}</p>
                       </div>
                     </div>
-                    {cuotasTarjeta.length>0&&<>
-                      <div style={{borderTop:`1px solid ${D.border}`,paddingTop:10,marginTop:4}}>
-                        <p style={{fontSize:11,color:D.textMuted,marginBottom:8,textTransform:"uppercase",letterSpacing:.5}}>Compras activas</p>
-                        {cuotasTarjeta.map(c=>{
-                          const montoCuota=c.montoCuota||Math.round((c.montoTotal||0)/(c.cuotasTotal||1));
-                          const resto=c.cuotasRestantes||c.cuotasTotal||0;
-                          const pct=c.cuotasTotal?Math.round(((c.cuotasTotal-resto)/c.cuotasTotal)*100):0;
+
+                    {/* Compras activas */}
+                    {cuotasTarj.length>0&&<>
+                      <div style={{borderTop:`1px solid ${D.border}`,paddingTop:12,marginTop:4}}>
+                        <p style={{fontSize:11,color:D.textMuted,marginBottom:10,textTransform:"uppercase",letterSpacing:.5}}>Compras en cuotas</p>
+                        {cuotasTarj.map(c=>{
+                          const {montoCuota,totalCuotas,mesesPagados,cuotasRestantes,pagado,deuda,pct}=calcCuota(c);
+                          const terminada=cuotasRestantes===0;
                           return(
-                            <div key={c.id} style={{marginBottom:10,paddingBottom:10,borderBottom:`1px solid ${D.border}22`}}>
-                              <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
+                            <div key={c.id} style={{marginBottom:14,paddingBottom:14,borderBottom:`1px solid ${D.border}22`,opacity:terminada?0.5:1}}>
+                              {/* Nombre + estado */}
+                              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:6}}>
                                 <div>
-                                  <p style={{fontSize:13,fontWeight:500,margin:0}}>{c.nombre}</p>
-                                  <span style={{fontSize:11,background:D.purple+"22",color:D.purple,padding:"2px 8px",borderRadius:20}}>{c.categoria}</span>
+                                  <p style={{fontSize:14,fontWeight:600,margin:"0 0 4px"}}>{c.nombre}</p>
+                                  <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                                    <span style={{fontSize:11,background:D.purple+"22",color:D.purple,padding:"2px 8px",borderRadius:20}}>{c.categoria}</span>
+                                    {terminada
+                                      ?<span style={{fontSize:11,background:D.green+"22",color:D.green,padding:"2px 8px",borderRadius:20}}>✓ Saldada</span>
+                                      :<span style={{fontSize:11,background:D.yellow+"22",color:D.yellow,padding:"2px 8px",borderRadius:20}}>{cuotasRestantes}/{totalCuotas} restantes</span>
+                                    }
+                                  </div>
                                 </div>
                                 <div style={{textAlign:"right"}}>
-                                  <p style={{fontSize:14,fontWeight:600,color:D.red,margin:0}}>{fmt(montoCuota,t.moneda||"ARS")}/mes</p>
-                                  <p style={{fontSize:11,color:D.textMuted,margin:0}}>{resto} cuotas restantes</p>
+                                  <p style={{fontSize:15,fontWeight:700,color:terminada?D.green:D.red,margin:0}}>{fmt(montoCuota,tarj.moneda||"ARS")}<span style={{fontSize:11,color:D.textMuted,fontWeight:400}}>/mes</span></p>
                                 </div>
                               </div>
-                              <div style={{background:D.surface2,borderRadius:4,height:4}}>
-                                <div style={{width:`${pct}%`,height:"100%",background:`linear-gradient(90deg,${D.accent},${D.green})`,borderRadius:4}}/>
+
+                              {/* Barra de progreso */}
+                              <div style={{marginBottom:6}}>
+                                <div style={{background:D.surface2,borderRadius:6,height:8}}>
+                                  <div style={{width:`${pct}%`,height:"100%",background:terminada?D.green:`linear-gradient(90deg,${D.accent},${D.green})`,borderRadius:6,transition:"width .5s"}}/>
+                                </div>
                               </div>
-                              <div style={{display:"flex",justifyContent:"space-between",fontSize:11,color:D.textMuted,marginTop:2}}>
-                                <span>Pagado: {fmt(montoCuota*(c.cuotasTotal-resto),t.moneda||"ARS")}</span>
-                                <span>Deuda: {fmt(montoCuota*resto,t.moneda||"ARS")}</span>
+
+                              {/* Pagado / Deuda */}
+                              <div style={{display:"flex",justifyContent:"space-between",fontSize:12}}>
+                                <span style={{color:D.textMuted}}>Pagado: <span style={{color:D.green,fontWeight:600}}>{fmt(pagado,tarj.moneda||"ARS")}</span> <span style={{color:D.textMuted}}>({pct}%)</span></span>
+                                <span style={{color:D.textMuted}}>Deuda: <span style={{color:terminada?D.green:D.red,fontWeight:600}}>{fmt(deuda,tarj.moneda||"ARS")}</span></span>
+                              </div>
+
+                              {/* Botones editar/borrar */}
+                              <div style={{display:"flex",gap:6,marginTop:8}}>
+                                <button onClick={()=>handleEdit(c,"cuotas")} style={{flex:1,padding:"6px",borderRadius:8,border:`1px solid ${D.accent}44`,background:D.accent+"11",color:D.accent,fontSize:12}}>✏️ Editar</button>
+                                <button onClick={()=>handleDelete(c.id,"cuotas")} style={{flex:1,padding:"6px",borderRadius:8,border:`1px solid ${D.red}44`,background:D.red+"11",color:D.red,fontSize:12}}>🗑️ Eliminar</button>
                               </div>
                             </div>
                           );
                         })}
                       </div>
+
+                      {/* Totales tarjeta */}
                       <div style={{display:"flex",justifyContent:"space-between",padding:"10px 0 0",borderTop:`1px solid ${D.border}`}}>
                         <span style={{fontSize:12,color:D.textMuted}}>Deuda total tarjeta</span>
-                        <span style={{fontSize:14,fontWeight:700,color:D.red}}>{fmt(deudaTotal,t.moneda||"ARS")}</span>
+                        <span style={{fontSize:15,fontWeight:700,color:D.red}}>{fmt(deudaTotal,tarj.moneda||"ARS")}</span>
                       </div>
                     </>}
+
+                    {/* Editar/eliminar tarjeta */}
                     <div style={{display:"flex",gap:8,marginTop:12}}>
-                      <button onClick={()=>handleEdit(t,"tarjetas")} style={{flex:1,padding:"8px",borderRadius:10,border:`1px solid ${D.accent}44`,background:D.accent+"11",color:D.accent,fontSize:13}}>✏️ Editar</button>
-                      <button onClick={()=>handleDelete(t.id,"tarjetas")} style={{flex:1,padding:"8px",borderRadius:10,border:`1px solid ${D.red}44`,background:D.red+"11",color:D.red,fontSize:13}}>🗑️ Eliminar</button>
+                      <button onClick={()=>handleEdit(tarj,"tarjetas")} style={{flex:1,padding:"8px",borderRadius:10,border:`1px solid ${D.accent}44`,background:D.accent+"11",color:D.accent,fontSize:13}}>✏️ Editar tarjeta</button>
+                      <button onClick={()=>handleDelete(tarj.id,"tarjetas")} style={{flex:1,padding:"8px",borderRadius:10,border:`1px solid ${D.red}44`,background:D.red+"11",color:D.red,fontSize:13}}>🗑️ Eliminar tarjeta</button>
                     </div>
                   </div>
                 );
@@ -1215,18 +1246,6 @@ export default function App(){
               <div style={{background:D.surface,borderRadius:16,padding:"16px",border:`1px solid ${D.border}`,marginBottom:14}}>
                 <ProyeccionCuotas cuotas={records.cuotas||[]} tarjetas={records.tarjetas||[]}/>
               </div>
-            </>}
-
-            {/* LISTA CUOTAS SWIPEABLE */}
-            {(records.cuotas||[]).length>0&&<>
-              <p style={{fontSize:12,fontWeight:600,color:D.textMuted,textTransform:"uppercase",letterSpacing:1,margin:"16px 0 8px"}}>Todas las cuotas</p>
-              {(records.cuotas||[]).map(c=>{
-                const t=(records.tarjetas||[]).find(t=>t.id===c.tarjetaId);
-                const montoCuota=c.montoCuota||Math.round((c.montoTotal||0)/(c.cuotasTotal||1));
-                return(
-                  <SwipeRow key={c.id} record={{...c,titulo:c.nombre,monto:montoCuota,moneda:t?.moneda||"ARS",categoria:c.categoria,fecha:c.fechaInicio,nota:`${c.cuotasRestantes||c.cuotasTotal} cuotas restantes · ${t?.banco||""}`}} type="cuotas" onEdit={handleEdit} onDelete={handleDelete} color={D.red}/>
-                );
-              })}
             </>}
           </>}
           {tab==="Presupuesto"&&<Presupuesto chartLoaded={chartLoaded} catGasto={catGasto}/>}
