@@ -225,19 +225,44 @@ function SwipeRow({record,type,onEdit,onDelete,color}){
   );
 }
 
-function EditModal({record,type,onSave,onClose,catGasto,catIngreso}){
+function EditModal({record,type,onSave,onClose,catGasto,catIngreso,tarjetas}){
   const [d,setD]=useState({...record});
   const upd=(k,v)=>setD(p=>({...p,[k]:v}));
   const catMap={ingresos:catIngreso,gastos:catGasto,ahorros:CAT_AHORRO,inversiones:CAT_INV};
+
+  const fieldsCuotas=[
+    {id:"nombre",label:"Descripción",type:"text"},
+    {id:"montoCuota",label:"Cuota mensual",type:"number"},
+    {id:"cuotasTotal",label:"Cuotas totales",type:"number"},
+    {id:"cuotasRestantes",label:"Cuotas restantes",type:"number"},
+    {id:"fechaInicio",label:"Mes inicio (YYYY-MM)",type:"month"},
+    {id:"categoria",label:"Categoría",options:catGasto},
+  ];
+
+  const fieldsGeneric=[
+    {id:"titulo",label:"Descripción",type:"text"},
+    {id:"monto",label:"Monto",type:"number"},
+    {id:"moneda",label:"Moneda",options:MONEDAS},
+    {id:"categoria",label:"Categoría",options:catMap[type]||[]},
+    {id:"persona",label:"¿Quién?",type:"text"},
+    {id:"fecha",label:"Fecha",type:"date"},
+    {id:"nota",label:"Nota",type:"text"}
+  ];
+
+  const fields=type==="cuotas"?fieldsCuotas:fieldsGeneric;
+
   return(
     <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.8)",zIndex:300,display:"flex",alignItems:"flex-end"}} onClick={onClose}>
       <div onClick={e=>e.stopPropagation()} style={{background:D.surface,borderRadius:"20px 20px 0 0",padding:"20px 16px 36px",width:"100%",border:`1px solid ${D.border}`,maxHeight:"90vh",overflowY:"auto"}} className="slide-in">
         <div style={{width:40,height:4,background:D.border,borderRadius:4,margin:"0 auto 16px"}}/>
-        <p style={{fontWeight:700,fontSize:16,marginBottom:16}}>Editar registro</p>
-        {[{id:"titulo",label:"Descripción",type:"text"},{id:"monto",label:"Monto",type:"number"},{id:"moneda",label:"Moneda",options:MONEDAS},{id:"categoria",label:"Categoría",options:catMap[type]||[]},{id:"persona",label:"¿Quién?",type:"text"},{id:"fecha",label:"Fecha",type:"date"},{id:"nota",label:"Nota",type:"text"}].map(f=>(
+        <p style={{fontWeight:700,fontSize:16,marginBottom:16}}>Editar {type==="cuotas"?"compra":"registro"}</p>
+        {fields.map(f=>(
           <div key={f.id} style={{marginBottom:10}}>
             <label style={{display:"block",fontSize:11,color:D.textMuted,marginBottom:4,fontWeight:500,textTransform:"uppercase",letterSpacing:.3}}>{f.label}</label>
-            {f.options?(<select value={d[f.id]||""} onChange={e=>upd(f.id,e.target.value)}>{f.options.map(o=><option key={o}>{o}</option>)}</select>):(<input type={f.type||"text"} value={d[f.id]||""} onChange={e=>upd(f.id,e.target.value)}/>)}
+            {f.options
+              ?(<select value={d[f.id]||""} onChange={e=>upd(f.id,e.target.value)}>{f.options.map(o=><option key={o}>{o}</option>)}</select>)
+              :(<input type={f.type||"text"} value={d[f.id]||""} onChange={e=>upd(f.id,f.type==="number"?Number(e.target.value):e.target.value)}/>)
+            }
           </div>
         ))}
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginTop:8}}>
