@@ -913,7 +913,14 @@ export default function App(){
       const proy=(records.proyectos||[]).find(p=>p.titulo===nombre);
       if(proy){const diff=(+data.monto||0)-(editRecord.monto||0);await apiData({action:"update",type:"proyectos",id:proy.id,record:{...proy,acumulado:Math.max(0,(proy.acumulado||0)+diff)}},token);}
     }
-    await apiData({action:"update",type:editType,id:editRecord.id,record:{...data,monto:+data.monto||0}},token);
+    await apiData({
+    action:"update",
+    type:editType,
+    id:editRecord.id,
+    record: editType==="cuotas"
+      ? {...data, montoCuota:+data.montoCuota||0, cuotasTotal:+data.cuotasTotal||0, cuotasRestantes:+data.cuotasRestantes||0}
+      : {...data, monto:+data.monto||0}
+    },token);
     showMsg("✓ Actualizado");setEditRecord(null);setEditType(null);loadAll();setLoading(false);
   };
 
