@@ -1218,7 +1218,7 @@ export default function App(){
                                     <span style={{fontSize:11,background:D.purple+"22",color:D.purple,padding:"2px 8px",borderRadius:20}}>{c.categoria}</span>
                                     {terminada
                                       ?<span style={{fontSize:11,background:D.green+"22",color:D.green,padding:"2px 8px",borderRadius:20}}>✓ Saldada</span>
-                                      :<span style={{fontSize:11,background:D.yellow+"22",color:D.yellow,padding:"2px 8px",borderRadius:20}}>{cuotasRestantes}/{totalCuotas} restantes</span>
+                                      :<span style={{fontSize:11,background:D.yellow+"22",color:D.yellow,padding:"2px 8px",borderRadius:20}}>C.{String(mesesPagados+1).padStart(2,"0")}/{String(totalCuotas).padStart(2,"0")}</span>
                                     }
                                   </div>
                                 </div>
