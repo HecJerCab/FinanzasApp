@@ -1241,19 +1241,15 @@ export default function App(){
                               </div>
 
                               {/* Botones editar/borrar */}
-                              <div style={{display:"flex",gap:6,marginTop:8}}>
-                                <button onClick={()=>handleEdit(c,"cuotas")} style={{flex:1,padding:"6px",borderRadius:8,border:`1px solid ${D.accent}44`,background:D.accent+"11",color:D.accent,fontSize:12}}>✏️ Editar</button>
-                                <button onClick={()=>handleDelete(c.id,"cuotas")} style={{flex:1,padding:"6px",borderRadius:8,border:`1px solid ${D.red}44`,background:D.red+"11",color:D.red,fontSize:12}}>🗑️ Eliminar</button>
                                 <div style={{display:"flex",gap:6,marginTop:8}}>
-                                <button onClick={()=>handleEdit(c,"cuotas")} style={{flex:1,padding:"6px",borderRadius:8,border:`1px solid ${D.accent}44`,background:D.accent+"11",color:D.accent,fontSize:12}}>✏️ Editar</button>
-                                <button onClick={async()=>{
-                                  await apiData({action:"update",type:"cuotas",id:c.id,record:{...c,archivada:true}},token);
-                                  showMsg("Cuota archivada");loadAll();
-                                }} style={{flex:1,padding:"6px",borderRadius:8,border:`1px solid ${D.yellow}44`,background:D.yellow+"11",color:D.yellow,fontSize:12}}>📦 Archivar</button>
-                                <button onClick={()=>handleDelete(c.id,"cuotas")} style={{flex:1,padding:"6px",borderRadius:8,border:`1px solid ${D.red}44`,background:D.red+"11",color:D.red,fontSize:12}}>🗑️ Eliminar</button>
+                                  <button onClick={()=>handleEdit(c,"cuotas")} style={{flex:1,padding:"6px",borderRadius:8,border:`1px solid ${D.accent}44`,background:D.accent+"11",color:D.accent,fontSize:12}}>✏️ Editar</button>
+                                  <button onClick={async()=>{
+                                    await apiData({action:"update",type:"cuotas",id:c.id,record:{...c,archivada:true}},token);
+                                    showMsg("Cuota archivada");loadAll();
+                                  }} style={{flex:1,padding:"6px",borderRadius:8,border:`1px solid ${D.yellow}44`,background:D.yellow+"11",color:D.yellow,fontSize:12}}>📦 Archivar</button>
+                                  <button onClick={()=>handleDelete(c.id,"cuotas")} style={{flex:1,padding:"6px",borderRadius:8,border:`1px solid ${D.red}44`,background:D.red+"11",color:D.red,fontSize:12}}>🗑️ Eliminar</button>
+                                </div>
                               </div>
-                              </div>
-                            </div>
                           );
                         })}
                       </div>
