@@ -549,14 +549,25 @@ function CuotaForm({tarjetas,onSave}){
             <input type="number" placeholder="0" value={d.montoCuota} onChange={e=>upd("montoCuota",e.target.value)}/>
           </div>
           <div>
-            <label style={{display:"block",fontSize:11,color:D.textMuted,marginBottom:4,fontWeight:500,textTransform:"uppercase",letterSpacing:.3}}>Cuotas restantes</label>
-            <input type="number" placeholder="6" value={d.cuotasRestantes} onChange={e=>upd("cuotasRestantes",e.target.value)}/>
+            <label style={{display:"block",fontSize:11,color:D.textMuted,marginBottom:4,fontWeight:500,textTransform:"uppercase",letterSpacing:.3}}>Cuotas totales</label>
+            <input type="number" placeholder="12" value={d.cuotasTotal} onChange={e=>upd("cuotasTotal",e.target.value)}/>
+          </div>
+          <div style={{gridColumn:"1/-1"}}>
+            <label style={{display:"block",fontSize:11,color:D.textMuted,marginBottom:4,fontWeight:500,textTransform:"uppercase",letterSpacing:.3}}>Cuotas ya pagadas</label>
+            <input type="number" placeholder="0" value={d.cuotasPagadas||""} onChange={e=>upd("cuotasPagadas",e.target.value)}/>
           </div>
         </div>
       )}
       <button onClick={()=>{
         if(!d.nombre||!d.tarjetaId) return;
-        const record={...d,montoTotal:+d.montoTotal||0,cuotasTotal:+d.cuotasTotal||0,montoCuota:+d.montoCuota||montoCuotaCalc,cuotasRestantes:+d.cuotasRestantes||+d.cuotasTotal||0};
+        const cuotasPagadas=+d.cuotasPagadas||0;
+        const cuotasTotal=+d.cuotasTotal||0;
+        const hoy=new Date();
+        const mesInicio=new Date(hoy.getFullYear(),hoy.getMonth()-cuotasPagadas,1);
+        const fechaInicioCalc=cuotasPagadas>0
+          ? `${mesInicio.getFullYear()}-${String(mesInicio.getMonth()+1).padStart(2,"0")}`
+          : d.fechaInicio;
+        const record={...d,montoTotal:+d.montoTotal||0,cuotasTotal,montoCuota:+d.montoCuota||montoCuotaCalc,cuotasRestantes:cuotasTotal-cuotasPagadas,fechaInicio:fechaInicioCalc};
         onSave(record);
         setD({nombre:"",categoria:"",tarjetaId:"",montoTotal:"",cuotasTotal:"",montoCuota:"",cuotasRestantes:"",fechaInicio:new Date().toISOString().slice(0,7)});
       }} style={{width:"100%",padding:"12px",borderRadius:12,border:"none",background:D.red,color:"#fff",fontSize:14,fontWeight:600}}>+ Agregar cuota</button>
