@@ -868,6 +868,7 @@ export default function App(){
   const [sidebarOpen,setSidebarOpen]=useState(false);
   const [desktop,setDesktop]=useState(isDesktop());
   const [verArchivadas,setVerArchivadas]=useState({});
+  const [seleccionDebito,setSeleccionDebito]=useState({});
 
   useEffect(()=>{
     const h=()=>setDesktop(isDesktop());
@@ -933,6 +934,32 @@ export default function App(){
       : {...data, monto:+data.monto||0}
     },token);
     showMsg("✓ Actualizado");setEditRecord(null);setEditType(null);loadAll();setLoading(false);
+  };
+
+  const toggleDebito=(id)=>setSeleccionDebito(p=>({...p,[id]:!p[id]}));
+
+  const confirmarDebitos=async(cuotasTarj,mesActual)=>{
+    const seleccionadas=cuotasTarj.filter(c=>seleccionDebito[c.id]&&c.ultimoMesDebitado!==mesActual);
+    if(seleccionadas.length===0) return;
+    setLoading(true);
+    for(const c of seleccionadas){
+      const totalCuotas=c.cuotasTotal||c.cuotasRestantes||0;
+      const restantesActuales=c.cuotasRestantes??totalCuotas;
+      const nuevoRestantes=Math.max(0,restantesActuales-1);
+      await apiData({action:"update",type:"cuotas",id:c.id,record:{...c,cuotasRestantes:nuevoRestantes,ultimoMesDebitado:mesActual}},token);
+    }
+    setSeleccionDebito(p=>{const n={...p};seleccionadas.forEach(c=>delete n[c.id]);return n;});
+    showMsg(`${seleccionadas.length} cuota${seleccionadas.length>1?"s":""} debitada${seleccionadas.length>1?"s":""} ✓`);
+    loadAll();setLoading(false);
+  };
+
+  const deshacerDebito=async(c)=>{
+    const totalCuotas=c.cuotasTotal||c.cuotasRestantes||0;
+    const restantesActuales=c.cuotasRestantes??totalCuotas;
+    const nuevoRestantes=Math.min(totalCuotas,restantesActuales+1);
+    setLoading(true);
+    await apiData({action:"update",type:"cuotas",id:c.id,record:{...c,cuotasRestantes:nuevoRestantes,ultimoMesDebitado:null}},token);
+    showMsg("Débito deshecho");loadAll();setLoading(false);
   };
 
   const confirmDelete=async()=>{
@@ -1178,17 +1205,14 @@ export default function App(){
                 const cuotasTarj=(records.cuotas||[]).filter(c=>c.tarjetaId===tarj.id&&!c.archivada);
                 const cuotasArchivadas=(records.cuotas||[]).filter(c=>c.tarjetaId===tarj.id&&c.archivada);
                 const hoy=new Date();
+                const mesActual=`${hoy.getFullYear()}-${String(hoy.getMonth()+1).padStart(2,"0")}`;
 
-                // Para cada cuota calculamos cuántas cuotas ya pasaron desde el mes de inicio
+                // Progreso manual: cuotasRestantes es la fuente de verdad, se actualiza al marcar débitos del mes
                 const calcCuota=(c)=>{
                   const montoCuota=c.montoCuota||Math.round((c.montoTotal||0)/(c.cuotasTotal||1));
                   const totalCuotas=c.cuotasTotal||c.cuotasRestantes||0;
-                  const [anio,mes]=c.fechaInicio.split("-").map(Number);
-                  const inicioDate=new Date(anio,mes-1,1);
-                  // Meses transcurridos desde inicio hasta hoy
-                  const mesesTranscurridos=(hoy.getFullYear()-inicioDate.getFullYear())*12+(hoy.getMonth()-inicioDate.getMonth());
-                  const mesesPagados=Math.max(0,Math.min(totalCuotas, mesesTranscurridos));
-                  const cuotasRestantes=Math.max(0,totalCuotas-mesesPagados);
+                  const cuotasRestantes=Math.max(0,Math.min(totalCuotas,c.cuotasRestantes??totalCuotas));
+                  const mesesPagados=totalCuotas-cuotasRestantes;
                   const pagado=montoCuota*mesesPagados;
                   const deuda=montoCuota*cuotasRestantes;
                   const pct=totalCuotas>0?Math.round((mesesPagados/totalCuotas)*100):0;
@@ -1222,7 +1246,12 @@ export default function App(){
                     {/* Compras activas */}
                     {cuotasTarj.length>0&&<>
                       <div style={{borderTop:`1px solid ${D.border}`,paddingTop:12,marginTop:4}}>
-                        <p style={{fontSize:11,color:D.textMuted,marginBottom:10,textTransform:"uppercase",letterSpacing:.5}}>Compras en cuotas</p>
+                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+                          <p style={{fontSize:11,color:D.textMuted,textTransform:"uppercase",letterSpacing:.5,margin:0}}>Compras en cuotas</p>
+                          {cuotasTarj.some(c=>seleccionDebito[c.id]&&c.ultimoMesDebitado!==mesActual)&&
+                            <button onClick={()=>confirmarDebitos(cuotasTarj,mesActual)} style={{padding:"6px 12px",borderRadius:8,border:"none",background:D.green,color:"#fff",fontSize:11,fontWeight:600}}>✅ Confirmar débitos</button>
+                          }
+                        </div>
                         {cuotasTarj.map(c=>{
                           const {montoCuota,totalCuotas,mesesPagados,cuotasRestantes,pagado,deuda,pct}=calcCuota(c);
                           const terminada=cuotasRestantes===0;
@@ -1257,6 +1286,19 @@ export default function App(){
                                 <span style={{color:D.textMuted}}>Pagado: <span style={{color:D.green,fontWeight:600}}>{fmt(pagado,tarj.moneda||"ARS")}</span> <span style={{color:D.textMuted}}>({pct}%)</span></span>
                                 <span style={{color:D.textMuted}}>Deuda: <span style={{color:terminada?D.green:D.red,fontWeight:600}}>{fmt(deuda,tarj.moneda||"ARS")}</span></span>
                               </div>
+
+                              {/* Marcar débito del mes */}
+                              {!terminada&&(
+                                c.ultimoMesDebitado===mesActual
+                                ?<div style={{display:"flex",alignItems:"center",gap:8,marginTop:8,fontSize:12,color:D.green}}>
+                                  <span>✓ Debitada este mes ({mesActual})</span>
+                                  <button onClick={()=>deshacerDebito(c)} style={{marginLeft:"auto",padding:"4px 8px",borderRadius:8,border:`1px solid ${D.border}`,background:D.surface2,color:D.textMuted,fontSize:11}}>↺ Deshacer</button>
+                                </div>
+                                :<label style={{display:"flex",alignItems:"center",gap:6,marginTop:8,fontSize:12,color:D.textMuted,cursor:"pointer"}}>
+                                  <input type="checkbox" checked={!!seleccionDebito[c.id]} onChange={()=>toggleDebito(c.id)}/>
+                                  Entró este mes ({mesActual}) — marcar como debitada
+                                </label>
+                              )}
 
                               {/* Botones editar/borrar */}
                                 <div style={{display:"flex",gap:6,marginTop:8}}>
