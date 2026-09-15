@@ -879,6 +879,9 @@ export default function App(){
   useEffect(()=>{
     const style=document.createElement("style");style.textContent=css;document.head.appendChild(style);
     if(window.Chart){setChartLoaded(true);}else{const s=document.createElement("script");s.src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js";s.onload=()=>setChartLoaded(true);document.head.appendChild(s);}
+    const sx=document.createElement("script");
+    sx.src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";
+    document.head.appendChild(sx);
     const savedToken=localStorage.getItem("nf_jwt");
     const savedUser=localStorage.getItem("nf_user");
     if(savedToken&&savedUser){
@@ -975,6 +978,26 @@ export default function App(){
     }
     await apiData({action:"delete",type:deleteInfo.type,id:deleteInfo.id},token);
     showMsg("✓ Eliminado");setDeleteInfo(null);loadAll();setLoading(false);
+  };
+
+  const exportarGastosExcel=()=>{
+    const wb=window.XLSX.utils.book_new();
+    const resumen=catGasto.map(c=>({
+      Categoría:c,
+      Total:fl.gastos.filter(r=>r.categoria===c).reduce((s,r)=>s+r.monto,0)
+    })).filter(r=>r.Total>0);
+    const detalle=fl.gastos.map(r=>({
+      Fecha:r.fecha,
+      Descripción:r.titulo,
+      Categoría:r.categoria,
+      Monto:r.monto,
+      Moneda:r.moneda,
+      Persona:r.persona||"",
+      Nota:r.nota||""
+    }));
+    window.XLSX.utils.book_append_sheet(wb,window.XLSX.utils.json_to_sheet(resumen),"Resumen");
+    window.XLSX.utils.book_append_sheet(wb,window.XLSX.utils.json_to_sheet(detalle),"Detalle");
+    window.XLSX.writeFile(wb,`Gastos_${selectedMonth}.xlsx`);
   };
 
   const handleEdit=(record,type)=>{setEditRecord(record);setEditType(type);};
@@ -1124,9 +1147,13 @@ export default function App(){
           {tab==="Gastos"&&<>
             <AddForm type="gastos" fields={[{id:"titulo",label:"Descripción",placeholder:"Ej: Supermercado"},{id:"monto",label:"Monto",type:"number"},{id:"moneda",label:"Moneda",options:MONEDAS},{id:"categoria",label:"Categoría",options:catGasto},{id:"persona",label:"¿Quién pagó?"},{id:"fecha",label:"Fecha",type:"date"},{id:"nota",label:"Nota"}]}/>
             <PeriodFilter/>
+            <button onClick={exportarGastosExcel} style={{width:"100%",padding:"10px",borderRadius:10,border:`1px solid ${D.green}44`,background:D.green+"11",color:D.green,fontSize:13,fontWeight:600,marginBottom:10}}>📊 Exportar Excel del período</button>  
             {chartLoaded&&fl.gastos.length>0&&<><div style={{background:D.surface,borderRadius:16,padding:"14px",border:`1px solid ${D.border}`,marginBottom:14}}><PieChart data={gastosPorCat}/></div><div style={{background:D.surface,borderRadius:16,padding:"14px",border:`1px solid ${D.border}`,marginBottom:14}}><BarChart data={monthlyData(records.gastos||[])} color={D.red} moneda={moneda}/></div></>}
             <p style={{fontSize:12,fontWeight:600,color:D.textMuted,textTransform:"uppercase",letterSpacing:1,margin:"16px 0 8px"}}>Por categoría</p>
             {catGasto.map(c=><CatAccordion key={c} title={c} color={CAT_COLORS[c]||D.accent} items={fl.gastos.filter(r=>r.categoria===c)} type="gastos" onEdit={handleEdit} onDelete={handleDelete}/>)}
+            {fl.gastos.filter(r=>!catGasto.includes(r.categoria)).length>0&&
+            <CatAccordion title="⚠️ Sin categoría" color={D.yellow} items={fl.gastos.filter(r=>!catGasto.includes(r.categoria))} type="gastos" onEdit={handleEdit} onDelete={handleDelete}/>
+             }  
           </>}
 
           {tab==="Ahorro"&&<>
