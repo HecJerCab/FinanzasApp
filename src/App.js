@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 
-const CAT_GASTO_DEFAULT = ["(NB) Necesidades Basicas","(GF) Gastos Fijos","(GH) Gasto Hormiga","(GEX) Gasto Extra","(LZ) Limpieza","(CP) Cuidado Personal","(TP) Transporte-Auto","(GT) Gatos","(CD) Créditos","(SB) Subscripciones"];
+const CAT_GASTO_DEFAULT = ["(NB) Necesidades Basicas","(GF) Gastos Fijos","(GH) Gasto Hormiga","(GEX) Gasto Extra","(LZ) Limpieza","(CP) Cuidado Personal","(TP) Transporte-Auto","(GT) Gatos","(CD) Créditos","(SB) Subscripciones","(IMP) Impuestos"];
 const CAT_INGRESO_DEFAULT = ["Sueldo","Premio","Extra","Resto del Mes"];
 const CAT_INV = ["Plazo fijo","Acciones","Cripto","FCI","Dólares","Inmueble","Otro"];
 const CAT_AHORRO = ["Ahorro general","Fondo de emergencia","Vacaciones","Tecnología","Ropa","Otro"];
@@ -868,6 +868,26 @@ export default function App(){
   const [sidebarOpen,setSidebarOpen]=useState(false);
   const [desktop,setDesktop]=useState(isDesktop());
   const [verArchivadas,setVerArchivadas]=useState({});
+  const [tarjetasAbiertas,setTarjetasAbiertas]=useState({});
+  const [showNuevaTrj,setShowNuevaTrj]=useState(false);
+  const [showNuevaCompra,setShowNuevaCompra]=useState(false);
+  const [pagarResumen,setPagarResumen]=useState(null);
+
+  const calcCuotaFn=(c)=>{
+    const montoCuota=c.montoCuota||Math.round((c.montoTotal||0)/(c.cuotasTotal||1));
+    const totalCuotas=c.cuotasTotal||c.cuotasRestantes||0;
+    if(!c.fechaInicio) return{montoCuota,totalCuotas,mesesPagados:0,cuotasRestantes:totalCuotas,pagado:0,deuda:montoCuota*totalCuotas,pct:0};
+    const [anio,mes]=c.fechaInicio.split("-").map(Number);
+    const inicioDate=new Date(anio,mes-1,1);
+    const hoy=new Date();
+    const mesesTranscurridos=(hoy.getFullYear()-inicioDate.getFullYear())*12+(hoy.getMonth()-inicioDate.getMonth());
+    const mesesPagados=Math.max(0,Math.min(totalCuotas,mesesTranscurridos));
+    const cuotasRestantes=Math.max(0,totalCuotas-mesesPagados);
+    const pagado=montoCuota*mesesPagados;
+    const deuda=montoCuota*cuotasRestantes;
+    const pct=totalCuotas>0?Math.round((mesesPagados/totalCuotas)*100):0;
+    return{montoCuota,totalCuotas,mesesPagados,cuotasRestantes,pagado,deuda,pct};
+  };
   const [seleccionDebito,setSeleccionDebito]=useState({});
 
   useEffect(()=>{
@@ -1204,181 +1224,185 @@ export default function App(){
             {CAT_INV.map((c,i)=><CatAccordion key={c} title={c} color={COLORS[i%COLORS.length]} items={fl.inversiones.filter(r=>r.tipo===c)} type="inversiones" onEdit={handleEdit} onDelete={handleDelete}/>)}
           </>}
 
-{tab==="Creditos"&&<>
-            {/* AGREGAR TARJETA */}
-            <div style={{background:D.surface,borderRadius:16,padding:"16px",marginBottom:14,border:`1px solid ${D.border}`}}>
-              <p style={{fontWeight:600,fontSize:14,marginBottom:12}}>Nueva tarjeta</p>
-              <TarjetaForm onSave={async(data)=>{
-                setLoading(true);
-                await apiData({action:"add",type:"tarjetas",record:{...data,id:undefined}},token);
-                showMsg("Tarjeta guardada ✓");loadAll();setLoading(false);
-              }}/>
-            </div>
+          {tab==="Creditos"&&<>
+            {/* NUEVA TARJETA */}
+            {showNuevaTrj&&(
+              <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.8)",zIndex:300,display:"flex",alignItems:"flex-end"}} onClick={()=>setShowNuevaTrj(false)}>
+                <div onClick={e=>e.stopPropagation()} style={{background:D.surface,borderRadius:"20px 20px 0 0",padding:"20px 16px 36px",width:"100%",border:`1px solid ${D.border}`}} className="slide-in">
+                  <div style={{width:40,height:4,background:D.border,borderRadius:4,margin:"0 auto 16px"}}/>
+                  <p style={{fontWeight:700,fontSize:16,marginBottom:16}}>Nueva tarjeta</p>
+                  <TarjetaForm onSave={async(data)=>{
+                    setLoading(true);
+                    await apiData({action:"add",type:"tarjetas",record:{...data,id:undefined}},token);
+                    showMsg("Tarjeta guardada ✓");loadAll();setLoading(false);setShowNuevaTrj(false);
+                  }}/>
+                </div>
+              </div>
+            )}
 
-            {/* AGREGAR CUOTA */}
-            <div style={{background:D.surface,borderRadius:16,padding:"16px",marginBottom:14,border:`1px solid ${D.border}`}}>
-              <p style={{fontWeight:600,fontSize:14,marginBottom:12}}>Nueva compra en cuotas</p>
-              <CuotaForm tarjetas={records.tarjetas||[]} onSave={async(data)=>{
-                setLoading(true);
-                await apiData({action:"add",type:"cuotas",record:{...data,id:undefined}},token);
-                showMsg("Cuota guardada ✓");loadAll();setLoading(false);
-              }}/>
-            </div>
+            {/* NUEVA COMPRA */}
+            {showNuevaCompra&&(
+              <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.8)",zIndex:300,display:"flex",alignItems:"flex-end"}} onClick={()=>setShowNuevaCompra(false)}>
+                <div onClick={e=>e.stopPropagation()} style={{background:D.surface,borderRadius:"20px 20px 0 0",padding:"20px 16px 36px",width:"100%",border:`1px solid ${D.border}`,maxHeight:"90vh",overflowY:"auto"}} className="slide-in">
+                  <div style={{width:40,height:4,background:D.border,borderRadius:4,margin:"0 auto 16px"}}/>
+                  <p style={{fontWeight:700,fontSize:16,marginBottom:16}}>Nueva compra en cuotas</p>
+                  <CuotaForm tarjetas={records.tarjetas||[]} onSave={async(data)=>{
+                    setLoading(true);
+                    await apiData({action:"add",type:"cuotas",record:{...data,id:undefined}},token);
+                    showMsg("Compra guardada ✓");loadAll();setLoading(false);setShowNuevaCompra(false);
+                  }}/>
+                </div>
+              </div>
+            )}
 
-            {/* VISTA POR TARJETA */}
-            {(records.tarjetas||[]).length>0&&<>
-              <p style={{fontSize:12,fontWeight:600,color:D.textMuted,textTransform:"uppercase",letterSpacing:1,margin:"8px 0 12px"}}>Tarjetas activas</p>
-              {(records.tarjetas||[]).map(tarj=>{
-                const cuotasTarj=(records.cuotas||[]).filter(c=>c.tarjetaId===tarj.id&&!c.archivada);
-                const cuotasArchivadas=(records.cuotas||[]).filter(c=>c.tarjetaId===tarj.id&&c.archivada);
-                const hoy=new Date();
-                const mesActual=`${hoy.getFullYear()}-${String(hoy.getMonth()+1).padStart(2,"0")}`;
-
-                // Progreso manual: cuotasRestantes es la fuente de verdad, se actualiza al marcar débitos del mes
-                const calcCuota=(c)=>{
-                  const montoCuota=c.montoCuota||Math.round((c.montoTotal||0)/(c.cuotasTotal||1));
-                  const totalCuotas=c.cuotasTotal||c.cuotasRestantes||0;
-                  const cuotasRestantes=Math.max(0,Math.min(totalCuotas,c.cuotasRestantes??totalCuotas));
-                  const mesesPagados=totalCuotas-cuotasRestantes;
-                  const pagado=montoCuota*mesesPagados;
-                  const deuda=montoCuota*cuotasRestantes;
-                  const pct=totalCuotas>0?Math.round((mesesPagados/totalCuotas)*100):0;
-                  return{montoCuota,totalCuotas,mesesPagados,cuotasRestantes,pagado,deuda,pct};
-                };
-
-                const totalMes=cuotasTarj.reduce((s,c)=>{
-                  const {montoCuota,cuotasRestantes}=calcCuota(c);
-                  return cuotasRestantes>0?s+montoCuota:s;
-                },0);
-                const deudaTotal=cuotasTarj.reduce((s,c)=>s+calcCuota(c).deuda,0);
-
-                return(
-                  <div key={tarj.id} style={{background:D.surface,borderRadius:16,padding:"16px",marginBottom:12,border:`1px solid ${D.border}`}}>
-                    {/* Header tarjeta */}
-                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12}}>
-                      <div>
-                        <p style={{fontWeight:700,fontSize:16,margin:"0 0 6px"}}>{tarj.banco}</p>
-                        <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-                          <span style={{fontSize:11,background:D.accent+"22",color:D.accent,padding:"2px 8px",borderRadius:20}}>Cierre: día {tarj.diaCierre}</span>
-                          <span style={{fontSize:11,background:D.red+"22",color:D.red,padding:"2px 8px",borderRadius:20}}>Vence: día {tarj.diaVencimiento}</span>
-                          {tarj.limite>0&&<span style={{fontSize:11,background:D.green+"22",color:D.green,padding:"2px 8px",borderRadius:20}}>Límite: {fmt(tarj.limite,tarj.moneda)}</span>}
+            {/* PAGAR RESUMEN MODAL */}
+            {pagarResumen&&(
+              <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.8)",zIndex:300,display:"flex",alignItems:"flex-end"}} onClick={()=>setPagarResumen(null)}>
+                <div onClick={e=>e.stopPropagation()} style={{background:D.surface,borderRadius:"20px 20px 0 0",padding:"20px 16px 36px",width:"100%",border:`1px solid ${D.border}`,maxHeight:"90vh",overflowY:"auto"}} className="slide-in">
+                  <div style={{width:40,height:4,background:D.border,borderRadius:4,margin:"0 auto 16px"}}/>
+                  <p style={{fontWeight:700,fontSize:16,marginBottom:4}}>Pagar resumen — {pagarResumen.banco}</p>
+                  <p style={{fontSize:12,color:D.textMuted,marginBottom:16}}>Seleccioná las cuotas a incluir en el pago</p>
+                  {pagarResumen.cuotas.map(c=>{
+                    const sel=pagarResumen.seleccion.includes(c.id);
+                    const {montoCuota}=calcCuotaFn(c);
+                    return(
+                      <div key={c.id} onClick={()=>setPagarResumen(p=>({...p,seleccion:sel?p.seleccion.filter(x=>x!==c.id):[...p.seleccion,c.id]}))} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 12px",borderRadius:10,border:`1px solid ${sel?D.green:D.border}`,background:sel?D.green+"11":D.surface2,marginBottom:8,cursor:"pointer"}}>
+                        <div>
+                          <p style={{fontSize:13,fontWeight:600,margin:0}}>{c.nombre}</p>
+                          <p style={{fontSize:11,color:D.textMuted,margin:0}}>{c.categoria}</p>
+                        </div>
+                        <div style={{textAlign:"right"}}>
+                          <p style={{fontSize:14,fontWeight:700,color:sel?D.green:D.text,margin:0}}>{fmt(montoCuota,"ARS")}</p>
+                          {sel&&<span style={{fontSize:10,color:D.green}}>✓</span>}
                         </div>
                       </div>
-                      <div style={{textAlign:"right"}}>
-                        <p style={{fontSize:11,color:D.textMuted,margin:"0 0 2px"}}>Este mes</p>
-                        <p style={{fontSize:18,fontWeight:700,color:D.red,margin:0}}>{fmt(totalMes,tarj.moneda||"ARS")}</p>
+                    );
+                  })}
+                  <div style={{display:"flex",gap:8,marginBottom:12}}>
+                    <button onClick={()=>setPagarResumen(p=>({...p,seleccion:p.cuotas.map(c=>c.id)}))} style={{flex:1,padding:"8px",borderRadius:8,border:`1px solid ${D.accent}44`,background:D.accent+"11",color:D.accent,fontSize:12}}>Seleccionar todas</button>
+                    <button onClick={()=>setPagarResumen(p=>({...p,seleccion:[]}))} style={{flex:1,padding:"8px",borderRadius:8,border:`1px solid ${D.border}`,background:D.surface2,color:D.textMuted,fontSize:12}}>Limpiar</button>
+                  </div>
+                  <div style={{background:D.surface2,borderRadius:10,padding:"12px",marginBottom:12}}>
+                    <p style={{fontSize:12,fontWeight:600,color:D.textMuted,marginBottom:8,textTransform:"uppercase"}}>Impuestos del resumen</p>
+                    <input type="number" placeholder="Monto impuestos" value={pagarResumen.impuestos||""} onChange={e=>setPagarResumen(p=>({...p,impuestos:e.target.value}))} style={{marginBottom:6}}/>
+                    <input placeholder="Descripción (ej: IVA + Ley 25413)" value={pagarResumen.descImpuestos||""} onChange={e=>setPagarResumen(p=>({...p,descImpuestos:e.target.value}))}/>
+                  </div>
+                  <div style={{background:D.surface2,borderRadius:10,padding:"10px 12px",marginBottom:14,display:"flex",justifyContent:"space-between"}}>
+                    <span style={{fontSize:13,color:D.textMuted}}>Total a registrar</span>
+                    <span style={{fontSize:16,fontWeight:700,color:D.red}}>{fmt((pagarResumen.seleccion.reduce((s,id)=>{const c=pagarResumen.cuotas.find(x=>x.id===id);return s+(c?calcCuotaFn(c).montoCuota:0);},0))+(+pagarResumen.impuestos||0),"ARS")}</span>
+                  </div>
+                  <button onClick={async()=>{
+                    const hoy=today();
+                    const cuotasMonto=pagarResumen.seleccion.reduce((s,id)=>{const c=pagarResumen.cuotas.find(x=>x.id===id);return s+(c?calcCuotaFn(c).montoCuota:0);},0);
+                    if(cuotasMonto>0){
+                      await apiData({action:"add",type:"gastos",record:{titulo:`Resumen ${pagarResumen.banco}`,monto:cuotasMonto,moneda:"ARS",categoria:"(CD) Créditos",persona:userName,fecha:hoy,nota:`Cuotas: ${pagarResumen.seleccion.map(id=>pagarResumen.cuotas.find(x=>x.id===id)?.nombre).join(", ")}`}},token);
+                    }
+                    if(+pagarResumen.impuestos>0){
+                      await apiData({action:"add",type:"gastos",record:{titulo:pagarResumen.descImpuestos||`Impuestos ${pagarResumen.banco}`,monto:+pagarResumen.impuestos,moneda:"ARS",categoria:"(IMP) Impuestos",persona:userName,fecha:hoy,nota:`Impuestos resumen ${pagarResumen.banco}`}},token);
+                    }
+                    showMsg("✓ Resumen registrado como gasto");
+                    setPagarResumen(null);
+                    loadAll();
+                  }} style={{width:"100%",padding:"14px",borderRadius:12,border:"none",background:D.green,color:"#fff",fontSize:15,fontWeight:700}}>💳 Confirmar pago</button>
+                </div>
+              </div>
+            )}
+
+            {/* BOTONES PRINCIPALES */}
+            <div style={{display:"flex",gap:8,marginBottom:16}}>
+              <button onClick={()=>setShowNuevaCompra(true)} style={{flex:2,padding:"12px",borderRadius:12,border:"none",background:D.accent,color:"#fff",fontSize:14,fontWeight:600}}>+ Nueva compra</button>
+              <button onClick={()=>setShowNuevaTrj(true)} style={{flex:1,padding:"12px",borderRadius:12,border:`1px solid ${D.accent}44`,background:D.accent+"11",color:D.accent,fontSize:14,fontWeight:600}}>+ Nueva TRJ</button>
+            </div>
+
+            {/* TARJETAS COLAPSABLES */}
+            {(records.tarjetas||[]).length===0&&<p style={{color:D.textMuted,fontSize:13,textAlign:"center",padding:"2rem"}}>Sin tarjetas. Agregá una con "+ Nueva TRJ"</p>}
+            {(records.tarjetas||[]).map(tarj=>{
+              const hoy=new Date();
+              const cuotasTarj=(records.cuotas||[]).filter(c=>c.tarjetaId===tarj.id&&!c.archivada);
+              const deudaTotal=cuotasTarj.reduce((s,c)=>s+calcCuotaFn(c).deuda,0);
+              const cuotaMes=cuotasTarj.reduce((s,c)=>{const {montoCuota,cuotasRestantes}=calcCuotaFn(c);return cuotasRestantes>0?s+montoCuota:s;},0);
+              const abierta=tarjetasAbiertas[tarj.id];
+              return(
+                <div key={tarj.id} style={{background:D.surface,borderRadius:16,marginBottom:12,border:`1px solid ${D.border}`,overflow:"hidden"}}>
+                  {/* Header colapsable */}
+                  <div onClick={()=>setTarjetasAbiertas(p=>({...p,[tarj.id]:!p[tarj.id]}))} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"14px 16px",cursor:"pointer"}}>
+                    <div>
+                      <p style={{fontWeight:700,fontSize:16,margin:"0 0 4px"}}>{tarj.banco}</p>
+                      <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                        <span style={{fontSize:11,background:D.accent+"22",color:D.accent,padding:"2px 8px",borderRadius:20}}>Cierre: día {tarj.diaCierre}</span>
+                        <span style={{fontSize:11,background:D.red+"22",color:D.red,padding:"2px 8px",borderRadius:20}}>Vence: día {tarj.diaVencimiento}</span>
+                        {tarj.limite>0&&<span style={{fontSize:11,background:D.green+"22",color:D.green,padding:"2px 8px",borderRadius:20}}>Límite: {fmt(tarj.limite,"ARS")}</span>}
                       </div>
                     </div>
-
-                    {/* Compras activas */}
-                    {cuotasTarj.length>0&&<>
-                      <div style={{borderTop:`1px solid ${D.border}`,paddingTop:12,marginTop:4}}>
-                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
-                          <p style={{fontSize:11,color:D.textMuted,textTransform:"uppercase",letterSpacing:.5,margin:0}}>Compras en cuotas</p>
-                          {cuotasTarj.some(c=>seleccionDebito[c.id]&&c.ultimoMesDebitado!==mesActual)&&
-                            <button onClick={()=>confirmarDebitos(cuotasTarj,mesActual)} style={{padding:"6px 12px",borderRadius:8,border:"none",background:D.green,color:"#fff",fontSize:11,fontWeight:600}}>✅ Confirmar débitos</button>
-                          }
-                        </div>
-                        {cuotasTarj.map(c=>{
-                          const {montoCuota,totalCuotas,mesesPagados,cuotasRestantes,pagado,deuda,pct}=calcCuota(c);
-                          const terminada=cuotasRestantes===0;
-                          return(
-                            <div key={c.id} style={{marginBottom:14,paddingBottom:14,borderBottom:`1px solid ${D.border}22`,opacity:terminada?0.5:1}}>
-                              {/* Nombre + estado */}
-                              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:6}}>
-                                <div>
-                                  <p style={{fontSize:14,fontWeight:600,margin:"0 0 4px"}}>{c.nombre}</p>
-                                  <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-                                    <span style={{fontSize:11,background:D.purple+"22",color:D.purple,padding:"2px 8px",borderRadius:20}}>{c.categoria}</span>
-                                    {terminada
-                                      ?<span style={{fontSize:11,background:D.green+"22",color:D.green,padding:"2px 8px",borderRadius:20}}>✓ Saldada</span>
-                                      :<span style={{fontSize:11,background:D.yellow+"22",color:D.yellow,padding:"2px 8px",borderRadius:20}}>C.{String(mesesPagados+1).padStart(2,"0")}/{String(totalCuotas).padStart(2,"0")}</span>
-                                    }
-                                  </div>
-                                </div>
-                                <div style={{textAlign:"right"}}>
-                                  <p style={{fontSize:15,fontWeight:700,color:terminada?D.green:D.red,margin:0}}>{fmt(montoCuota,tarj.moneda||"ARS")}<span style={{fontSize:11,color:D.textMuted,fontWeight:400}}>/mes</span></p>
-                                </div>
-                              </div>
-
-                              {/* Barra de progreso */}
-                              <div style={{marginBottom:6}}>
-                                <div style={{background:D.surface2,borderRadius:6,height:8}}>
-                                  <div style={{width:`${pct}%`,height:"100%",background:terminada?D.green:`linear-gradient(90deg,${D.accent},${D.green})`,borderRadius:6,transition:"width .5s"}}/>
-                                </div>
-                              </div>
-
-                              {/* Pagado / Deuda */}
-                              <div style={{display:"flex",justifyContent:"space-between",fontSize:12}}>
-                                <span style={{color:D.textMuted}}>Pagado: <span style={{color:D.green,fontWeight:600}}>{fmt(pagado,tarj.moneda||"ARS")}</span> <span style={{color:D.textMuted}}>({pct}%)</span></span>
-                                <span style={{color:D.textMuted}}>Deuda: <span style={{color:terminada?D.green:D.red,fontWeight:600}}>{fmt(deuda,tarj.moneda||"ARS")}</span></span>
-                              </div>
-
-                              {/* Marcar débito del mes */}
-                              {!terminada&&(
-                                c.ultimoMesDebitado===mesActual
-                                ?<div style={{display:"flex",alignItems:"center",gap:8,marginTop:8,fontSize:12,color:D.green}}>
-                                  <span>✓ Debitada este mes ({mesActual})</span>
-                                  <button onClick={()=>deshacerDebito(c)} style={{marginLeft:"auto",padding:"4px 8px",borderRadius:8,border:`1px solid ${D.border}`,background:D.surface2,color:D.textMuted,fontSize:11}}>↺ Deshacer</button>
-                                </div>
-                                :<label style={{display:"flex",alignItems:"center",gap:6,marginTop:8,fontSize:12,color:D.textMuted,cursor:"pointer"}}>
-                                  <input type="checkbox" checked={!!seleccionDebito[c.id]} onChange={()=>toggleDebito(c.id)}/>
-                                  Entró este mes ({mesActual}) — marcar como debitada
-                                </label>
-                              )}
-
-                              {/* Botones editar/borrar */}
-                                <div style={{display:"flex",gap:6,marginTop:8}}>
-                                  <button onClick={()=>handleEdit(c,"cuotas")} style={{flex:1,padding:"6px",borderRadius:8,border:`1px solid ${D.accent}44`,background:D.accent+"11",color:D.accent,fontSize:12}}>✏️ Editar</button>
-                                  <button onClick={async()=>{
-                                    await apiData({action:"update",type:"cuotas",id:c.id,record:{...c,archivada:true}},token);
-                                    showMsg("Cuota archivada");loadAll();
-                                  }} style={{flex:1,padding:"6px",borderRadius:8,border:`1px solid ${D.yellow}44`,background:D.yellow+"11",color:D.yellow,fontSize:12}}>📦 Archivar</button>
-                                  <button onClick={()=>handleDelete(c.id,"cuotas")} style={{flex:1,padding:"6px",borderRadius:8,border:`1px solid ${D.red}44`,background:D.red+"11",color:D.red,fontSize:12}}>🗑️ Eliminar</button>
-                                </div>
-                              </div>
-                          );
-                        })}
-                      </div>
-                        {cuotasArchivadas.length>0&&<>
-                              <button onClick={()=>setVerArchivadas(p=>({...p,[tarj.id]:!p[tarj.id]}))} style={{width:"100%",padding:"8px",borderRadius:8,border:`1px solid ${D.border}`,background:D.surface2,color:D.textMuted,fontSize:12,marginTop:8}}>
-                                {verArchivadas[tarj.id]?"▲ Ocultar":"▼ Ver"} archivadas ({cuotasArchivadas.length})
-                              </button>
-                              {verArchivadas[tarj.id]&&cuotasArchivadas.map(c=>{
-                                const {montoCuota,totalCuotas,mesesPagados,pct}=calcCuota(c);
-                                return(
-                                  <div key={c.id} style={{marginTop:8,padding:"10px",borderRadius:10,border:`1px solid ${D.border}`,opacity:0.5}}>
-                                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                                      <p style={{fontSize:13,fontWeight:600,margin:0}}>{c.nombre}</p>
-                                      <span style={{fontSize:11,color:D.green}}>📦 Archivada</span>
-                                    </div>
-                                    <p style={{fontSize:12,color:D.textMuted,margin:"4px 0 0"}}>{mesesPagados}/{totalCuotas} cuotas · {fmt(montoCuota,tarj.moneda||"ARS")}/mes</p>
-                                    <button onClick={async()=>{
-                                      await apiData({action:"update",type:"cuotas",id:c.id,record:{...c,archivada:false}},token);
-                                      showMsg("Cuota restaurada");loadAll();
-                                    }} style={{marginTop:6,padding:"5px 10px",borderRadius:8,border:`1px solid ${D.green}44`,background:D.green+"11",color:D.green,fontSize:11}}>↩ Restaurar</button>
-                                  </div>
-                                );
-                              })}
-                            </>}
-                      {/* Totales tarjeta */}
-                      <div style={{display:"flex",justifyContent:"space-between",padding:"10px 0 0",borderTop:`1px solid ${D.border}`}}>
-                        <span style={{fontSize:12,color:D.textMuted}}>Deuda total tarjeta</span>
-                        <span style={{fontSize:15,fontWeight:700,color:D.red}}>{fmt(deudaTotal,tarj.moneda||"ARS")}</span>
-                      </div>
-                    </>}
-
-                    {/* Editar/eliminar tarjeta */}
-                    <div style={{display:"flex",gap:8,marginTop:12}}>
-                      <button onClick={()=>handleEdit(tarj,"tarjetas")} style={{flex:1,padding:"8px",borderRadius:10,border:`1px solid ${D.accent}44`,background:D.accent+"11",color:D.accent,fontSize:13}}>✏️ Editar tarjeta</button>
-                      <button onClick={()=>handleDelete(tarj.id,"tarjetas")} style={{flex:1,padding:"8px",borderRadius:10,border:`1px solid ${D.red}44`,background:D.red+"11",color:D.red,fontSize:13}}>🗑️ Eliminar tarjeta</button>
+                    <div style={{textAlign:"right"}}>
+                      <p style={{fontSize:11,color:D.textMuted,margin:"0 0 2px"}}>Deuda total</p>
+                      <p style={{fontSize:18,fontWeight:700,color:D.red,margin:"0 0 2px"}}>{fmt(deudaTotal,"ARS")}</p>
+                      <p style={{fontSize:11,color:D.textMuted,margin:0}}>{abierta?"▲":"▼"}</p>
                     </div>
                   </div>
-                );
-              })}
-            </>}
 
-            {/* PROYECCION MES A MES */}
+                  {/* Contenido expandido */}
+                  {abierta&&(
+                    <div style={{borderTop:`1px solid ${D.border}`,padding:"12px 16px"}}>
+                      {cuotasTarj.length===0&&<p style={{color:D.textMuted,fontSize:13,textAlign:"center",padding:"1rem"}}>Sin compras cargadas</p>}
+                      {cuotasTarj.map(c=>{
+                        const {montoCuota,totalCuotas,mesesPagados,cuotasRestantes,pagado,deuda,pct}=calcCuotaFn(c);
+                        const terminada=cuotasRestantes===0;
+                        return(
+                          <div key={c.id} style={{marginBottom:14,paddingBottom:14,borderBottom:`1px solid ${D.border}22`}}>
+                            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:6}}>
+                              <div>
+                                <p style={{fontSize:14,fontWeight:600,margin:"0 0 4px"}}>{c.nombre}</p>
+                                <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                                  <span style={{fontSize:11,background:D.purple+"22",color:D.purple,padding:"2px 8px",borderRadius:20}}>{c.categoria}</span>
+                                  {terminada
+                                    ?<span style={{fontSize:11,background:D.green+"22",color:D.green,padding:"2px 8px",borderRadius:20}}>✓ Saldada</span>
+                                    :<span style={{fontSize:11,background:D.yellow+"22",color:D.yellow,padding:"2px 8px",borderRadius:20}}>C.{String(mesesPagados+1).padStart(2,"0")}/{String(totalCuotas).padStart(2,"0")}</span>
+                                  }
+                                </div>
+                              </div>
+                              <div style={{textAlign:"right"}}>
+                                <p style={{fontSize:15,fontWeight:700,color:terminada?D.green:D.red,margin:0}}>{fmt(montoCuota,"ARS")}<span style={{fontSize:11,color:D.textMuted,fontWeight:400}}>/mes</span></p>
+                              </div>
+                            </div>
+                            <div style={{display:"flex",justifyContent:"space-between",fontSize:11,color:D.textMuted,marginBottom:4}}>
+                              <span>Total inicial: <span style={{color:D.text,fontWeight:500}}>{fmt(montoCuota*totalCuotas,"ARS")}</span></span>
+                              <span>{totalCuotas} cuotas</span>
+                            </div>
+                            <div style={{marginBottom:6}}>
+                              <div style={{background:D.surface2,borderRadius:6,height:8}}>
+                                <div style={{width:`${pct}%`,height:"100%",background:terminada?D.green:`linear-gradient(90deg,${D.accent},${D.green})`,borderRadius:6,transition:"width .5s"}}/>
+                              </div>
+                            </div>
+                            <div style={{display:"flex",justifyContent:"space-between",fontSize:12,marginBottom:8}}>
+                              <span style={{color:D.textMuted}}>Pagado: <span style={{color:D.green,fontWeight:600}}>{fmt(pagado,"ARS")}</span> <span style={{color:D.textMuted}}>({pct}%)</span></span>
+                              <span style={{color:D.textMuted}}>Pendiente: <span style={{color:terminada?D.green:D.red,fontWeight:600}}>{fmt(deuda,"ARS")}</span></span>
+                            </div>
+                            <div style={{display:"flex",gap:6}}>
+                              <button onClick={()=>handleEdit(c,"cuotas")} style={{flex:1,padding:"6px",borderRadius:8,border:`1px solid ${D.accent}44`,background:D.accent+"11",color:D.accent,fontSize:12}}>✏️ Editar</button>
+                              <button onClick={async()=>{await apiData({action:"update",type:"cuotas",id:c.id,record:{...c,archivada:true}},token);showMsg("Archivada");loadAll();}} style={{flex:1,padding:"6px",borderRadius:8,border:`1px solid ${D.yellow}44`,background:D.yellow+"11",color:D.yellow,fontSize:12}}>📦 Archivar</button>
+                              <button onClick={()=>handleDelete(c.id,"cuotas")} style={{flex:1,padding:"6px",borderRadius:8,border:`1px solid ${D.red}44`,background:D.red+"11",color:D.red,fontSize:12}}>🗑️ Eliminar</button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                      {/* Botones footer */}
+                      <div style={{borderTop:`1px solid ${D.border}`,paddingTop:12,marginTop:4,display:"flex",gap:8}}>
+                        <div style={{flex:1}}>
+                          <p style={{fontSize:11,color:D.textMuted,margin:"0 0 2px"}}>Este mes</p>
+                          <p style={{fontSize:16,fontWeight:700,color:D.red,margin:0}}>{fmt(cuotaMes,"ARS")}</p>
+                        </div>
+                        <button onClick={()=>setPagarResumen({banco:tarj.banco,cuotas:cuotasTarj,seleccion:cuotasTarj.filter(c=>!calcCuotaFn(c).terminada).map(c=>c.id),impuestos:"",descImpuestos:""})} style={{padding:"10px 16px",borderRadius:10,border:"none",background:D.green,color:"#fff",fontSize:13,fontWeight:700}}>💳 Pagar resumen</button>
+                        <button onClick={()=>handleEdit(tarj,"tarjetas")} style={{padding:"10px",borderRadius:10,border:`1px solid ${D.accent}44`,background:D.accent+"11",color:D.accent,fontSize:12}}>✏️</button>
+                        <button onClick={()=>handleDelete(tarj.id,"tarjetas")} style={{padding:"10px",borderRadius:10,border:`1px solid ${D.red}44`,background:D.red+"11",color:D.red,fontSize:12}}>🗑️</button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+
+            {/* PROYECCION */}
             {(records.cuotas||[]).length>0&&chartLoaded&&<>
               <p style={{fontSize:12,fontWeight:600,color:D.textMuted,textTransform:"uppercase",letterSpacing:1,margin:"20px 0 10px"}}>Proyección mes a mes</p>
               <div style={{background:D.surface,borderRadius:16,padding:"16px",border:`1px solid ${D.border}`,marginBottom:14}}>
