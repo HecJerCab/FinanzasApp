@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 
-const CAT_GASTO_DEFAULT = ["(NB) Necesidades Basicas","(GF) Gastos Fijos","(GH) Gasto Hormiga","(GEX) Gasto Extra","(LZ) Limpieza","(CP) Cuidado Personal","(TP) Transporte-Auto","(GT) Gatos","(CD) Créditos","(SB) Subscripciones","(IMP) Impuestos"];
+const CAT_GASTO_DEFAULT = ["(NB) Necesidades Basicas","(GF) Gastos Fijos","(GH) Gasto Hormiga","(GEX) Gasto Extra","(LZ) Limpieza","(CP) Cuidado Personal","(TP) Transporte-Auto","(GT) Gatos","(CD) CREDITOS","(SB) Subscripciones","(IMP) Impuestos"];
 const CAT_INGRESO_DEFAULT = ["Sueldo","Premio","Extra","Resto del Mes"];
 const CAT_INV = ["Plazo fijo","Acciones","Cripto","FCI","Dólares","Inmueble","Otro"];
 const CAT_AHORRO = ["Ahorro general","Fondo de emergencia","Vacaciones","Tecnología","Ropa","Otro"];
@@ -1348,6 +1348,7 @@ export default function App(){
                       {cuotasTarj.map(c=>{
                         const {montoCuota,totalCuotas,mesesPagados,cuotasRestantes,pagado,deuda,pct}=calcCuotaFn(c);
                         const terminada=cuotasRestantes===0;
+                        const listaArchivar=terminada&&!c.archivada;
                         return(
                           <div key={c.id} style={{marginBottom:14,paddingBottom:14,borderBottom:`1px solid ${D.border}22`}}>
                             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:6}}>
@@ -1356,7 +1357,10 @@ export default function App(){
                                 <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
                                   <span style={{fontSize:11,background:D.purple+"22",color:D.purple,padding:"2px 8px",borderRadius:20}}>{c.categoria}</span>
                                   {terminada
-                                    ?<span style={{fontSize:11,background:D.green+"22",color:D.green,padding:"2px 8px",borderRadius:20}}>✓ Saldada</span>
+                                    ?<>
+                                      <span style={{fontSize:11,background:D.green+"22",color:D.green,padding:"2px 8px",borderRadius:20}}>✓ Saldada</span>
+                                      <span style={{fontSize:11,background:D.yellow+"22",color:D.yellow,padding:"2px 8px",borderRadius:20}}>📦 Lista para archivar</span>
+                                    </>
                                     :<span style={{fontSize:11,background:D.yellow+"22",color:D.yellow,padding:"2px 8px",borderRadius:20}}>C.{String(mesesPagados+1).padStart(2,"0")}/{String(totalCuotas).padStart(2,"0")}</span>
                                   }
                                 </div>
