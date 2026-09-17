@@ -873,21 +873,16 @@ export default function App(){
   const [showNuevaCompra,setShowNuevaCompra]=useState(false);
   const [pagarResumen,setPagarResumen]=useState(null);
 
-  const calcCuotaFn=(c)=>{
-    const montoCuota=c.montoCuota||Math.round((c.montoTotal||0)/(c.cuotasTotal||1));
-    const totalCuotas=c.cuotasTotal||c.cuotasRestantes||0;
-    if(!c.fechaInicio) return{montoCuota,totalCuotas,mesesPagados:0,cuotasRestantes:totalCuotas,pagado:0,deuda:montoCuota*totalCuotas,pct:0};
-    const [anio,mes]=c.fechaInicio.split("-").map(Number);
-    const inicioDate=new Date(anio,mes-1,1);
-    const hoy=new Date();
-    const mesesTranscurridos=(hoy.getFullYear()-inicioDate.getFullYear())*12+(hoy.getMonth()-inicioDate.getMonth());
-    const mesesPagados=Math.max(0,Math.min(totalCuotas,mesesTranscurridos));
-    const cuotasRestantes=Math.max(0,totalCuotas-mesesPagados);
-    const pagado=montoCuota*mesesPagados;
-    const deuda=montoCuota*cuotasRestantes;
-    const pct=totalCuotas>0?Math.round((mesesPagados/totalCuotas)*100):0;
-    return{montoCuota,totalCuotas,mesesPagados,cuotasRestantes,pagado,deuda,pct};
-  };
+const calcCuotaFn=(c)=>{
+  const montoCuota=c.montoCuota||Math.round((c.montoTotal||0)/(c.cuotasTotal||1));
+  const totalCuotas=c.cuotasTotal||c.cuotasRestantes||0;
+  const mesesPagados=Math.min(totalCuotas, c.cuotasPagadasManual||0);
+  const cuotasRestantes=Math.max(0,totalCuotas-mesesPagados);
+  const pagado=montoCuota*mesesPagados;
+  const deuda=montoCuota*cuotasRestantes;
+  const pct=totalCuotas>0?Math.round((mesesPagados/totalCuotas)*100):0;
+  return{montoCuota,totalCuotas,mesesPagados,cuotasRestantes,pagado,deuda,pct};
+};
   const [seleccionDebito,setSeleccionDebito]=useState({});
 
   useEffect(()=>{
@@ -1294,6 +1289,13 @@ export default function App(){
                   <button onClick={async()=>{
                     const hoy=today();
                     const cuotasMonto=pagarResumen.seleccion.reduce((s,id)=>{const c=pagarResumen.cuotas.find(x=>x.id===id);return s+(c?calcCuotaFn(c).montoCuota:0);},0);
+                    for(const id of pagarResumen.seleccion){
+                      const c=pagarResumen.cuotas.find(x=>x.id===id);
+                      if(c){
+                        const nuevasPagadas=Math.min((c.cuotasPagadasManual||0)+1, c.cuotasTotal||c.cuotasRestantes||0);
+                        await apiData({action:"update",type:"cuotas",id:c.id,record:{...c,cuotasPagadasManual:nuevasPagadas}},token);
+                      }
+                    }  
                     if(cuotasMonto>0){
                       await apiData({action:"add",type:"gastos",record:{titulo:`Resumen ${pagarResumen.banco}`,monto:cuotasMonto,moneda:"ARS",categoria:"(CD) Créditos",persona:userName,fecha:hoy,nota:`Cuotas: ${pagarResumen.seleccion.map(id=>pagarResumen.cuotas.find(x=>x.id===id)?.nombre).join(", ")}`}},token);
                     }
