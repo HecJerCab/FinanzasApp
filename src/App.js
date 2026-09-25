@@ -567,7 +567,7 @@ function CuotaForm({tarjetas,onSave}){
         const fechaInicioCalc=cuotasPagadas>0
           ? `${mesInicio.getFullYear()}-${String(mesInicio.getMonth()+1).padStart(2,"0")}`
           : d.fechaInicio;
-        const record={...d,montoTotal:+d.montoTotal||0,cuotasTotal,montoCuota:+d.montoCuota||montoCuotaCalc,cuotasRestantes:cuotasTotal-cuotasPagadas,fechaInicio:fechaInicioCalc};
+        const record={...d,montoTotal:+d.montoTotal||0,cuotasTotal,montoCuota:+d.montoCuota||montoCuotaCalc,cuotasRestantes:cuotasTotal-cuotasPagadas,fechaInicio:fechaInicioCalc,cuotasPagadasManual:cuotasPagadas};
         onSave(record);
         setD({nombre:"",categoria:"",tarjetaId:"",montoTotal:"",cuotasTotal:"",montoCuota:"",cuotasRestantes:"",fechaInicio:new Date().toISOString().slice(0,7)});
       }} style={{width:"100%",padding:"12px",borderRadius:12,border:"none",background:D.red,color:"#fff",fontSize:14,fontWeight:600}}>+ Agregar cuota</button>
