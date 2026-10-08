@@ -1257,6 +1257,10 @@ const calcCuotaFn=(c)=>{
                   <div style={{width:40,height:4,background:D.border,borderRadius:4,margin:"0 auto 16px"}}/>
                   <p style={{fontWeight:700,fontSize:16,marginBottom:4}}>Pagar resumen — {pagarResumen.banco}</p>
                   <p style={{fontSize:12,color:D.textMuted,marginBottom:16}}>Seleccioná las cuotas a incluir en el pago</p>
+                  <div style={{marginBottom:12}}>
+                    <label style={{display:"block",fontSize:11,color:D.textMuted,marginBottom:4,fontWeight:500,textTransform:"uppercase",letterSpacing:.3}}>Fecha del resumen</label>
+                    <input type="date" value={pagarResumen.fecha||today()} onChange={e=>setPagarResumen(p=>({...p,fecha:e.target.value}))} />
+                  </div>
                   {pagarResumen.cuotas.map(c=>{
                     const sel=pagarResumen.seleccion.includes(c.id);
                     const {montoCuota}=calcCuotaFn(c);
@@ -1287,7 +1291,7 @@ const calcCuotaFn=(c)=>{
                     <span style={{fontSize:16,fontWeight:700,color:D.red}}>{fmt((pagarResumen.seleccion.reduce((s,id)=>{const c=pagarResumen.cuotas.find(x=>x.id===id);return s+(c?calcCuotaFn(c).montoCuota:0);},0))+(+pagarResumen.impuestos||0),"ARS")}</span>
                   </div>
                   <button onClick={async()=>{
-                    const hoy=today();
+                    const hoy=pagarResumen.fecha||today();
                     const cuotasMonto=pagarResumen.seleccion.reduce((s,id)=>{const c=pagarResumen.cuotas.find(x=>x.id===id);return s+(c?calcCuotaFn(c).montoCuota:0);},0);
                     for(const id of pagarResumen.seleccion){
                       const c=pagarResumen.cuotas.find(x=>x.id===id);
