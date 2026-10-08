@@ -1054,19 +1054,54 @@ const calcCuotaFn=(c)=>{
     );
   }
 
-  function PeriodFilter(){
-    return(
-      <div style={{margin:"12px 0"}}>
-        <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center",marginBottom:8}}>
-          {["semana","mes","año","todo"].map(p=>(<button key={p} onClick={()=>setPeriod(p)} style={{padding:"6px 14px",borderRadius:20,border:`1px solid ${period===p?D.accent:D.border}`,background:period===p?D.accent+"22":D.surface,color:period===p?D.accent:D.textMuted,fontSize:12,cursor:"pointer",fontWeight:period===p?600:400}}>{p.charAt(0).toUpperCase()+p.slice(1)}</button>))}
-          <div style={{marginLeft:"auto",display:"flex",gap:4}}>
-            {MONEDAS.map(m=>(<button key={m} onClick={()=>setMoneda(m)} style={{padding:"6px 12px",borderRadius:20,border:`1px solid ${moneda===m?D.yellow:D.border}`,background:moneda===m?D.yellow+"22":D.surface,color:moneda===m?D.yellow:D.textMuted,fontSize:12,cursor:"pointer",fontWeight:moneda===m?600:400}}>{m}</button>))}
-          </div>
+function PeriodFilter(){
+  const [showPicker,setShowPicker]=useState(false);
+  const [pickerYear,setPickerYear]=useState(new Date().getFullYear());
+  const meses=["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+  const mesActual=selectedMonth?parseInt(selectedMonth.split("-")[1])-1:new Date().getMonth();
+  const anioActual=selectedMonth?parseInt(selectedMonth.split("-")[0]):new Date().getFullYear();
+
+  return(
+    <div style={{margin:"12px 0"}}>
+      <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center",marginBottom:8}}>
+        {["semana","mes","año","todo"].map(p=>(<button key={p} onClick={()=>setPeriod(p)} style={{padding:"6px 14px",borderRadius:20,border:`1px solid ${period===p?D.accent:D.border}`,background:period===p?D.accent+"22":D.surface,color:period===p?D.accent:D.textMuted,fontSize:12,cursor:"pointer",fontWeight:period===p?600:400}}>{p.charAt(0).toUpperCase()+p.slice(1)}</button>))}
+        <div style={{marginLeft:"auto",display:"flex",gap:4}}>
+          {MONEDAS.map(m=>(<button key={m} onClick={()=>setMoneda(m)} style={{padding:"6px 12px",borderRadius:20,border:`1px solid ${moneda===m?D.yellow:D.border}`,background:moneda===m?D.yellow+"22":D.surface,color:moneda===m?D.yellow:D.textMuted,fontSize:12,cursor:"pointer",fontWeight:moneda===m?600:400}}>{m}</button>))}
         </div>
-        {period==="mes"&&(<input type="month" value={selectedMonth} onChange={e=>setSelectedMonth(e.target.value)} style={{width:"100%",padding:"8px 12px",borderRadius:10,border:`1px solid ${D.accent}`,background:D.surface2,color:D.text,fontSize:14}}/>)}
       </div>
-    );
-  }
+      {period==="mes"&&(
+        <div style={{position:"relative"}}>
+          <button onClick={()=>setShowPicker(p=>!p)} style={{width:"100%",padding:"10px 14px",borderRadius:10,border:`1px solid ${D.accent}`,background:D.surface2,color:D.text,fontSize:14,textAlign:"left",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <span>{meses[mesActual]} {anioActual}</span>
+            <span style={{fontSize:12,color:D.textMuted}}>{showPicker?"▲":"▼"}</span>
+          </button>
+          {showPicker&&(
+            <div style={{position:"absolute",top:"110%",left:0,right:0,background:D.surface,border:`1px solid ${D.border}`,borderRadius:12,padding:"12px",zIndex:100,boxShadow:"0 8px 24px rgba(0,0,0,.4)"}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+                <button onClick={()=>setPickerYear(y=>y-1)} style={{background:"none",border:`1px solid ${D.border}`,borderRadius:8,padding:"4px 12px",color:D.textMuted,fontSize:14}}>‹</button>
+                <span style={{fontWeight:600,fontSize:15}}>{pickerYear}</span>
+                <button onClick={()=>setPickerYear(y=>y+1)} style={{background:"none",border:`1px solid ${D.border}`,borderRadius:8,padding:"4px 12px",color:D.textMuted,fontSize:14}}>›</button>
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:6}}>
+                {meses.map((m,i)=>{
+                  const selec=i===mesActual&&pickerYear===anioActual;
+                  return(
+                    <button key={m} onClick={()=>{
+                      setSelectedMonth(`${pickerYear}-${String(i+1).padStart(2,"0")}`);
+                      setShowPicker(false);
+                    }} style={{padding:"8px",borderRadius:8,border:`1px solid ${selec?D.accent:D.border}`,background:selec?D.accent+"33":D.surface2,color:selec?D.accent:D.text,fontSize:13,fontWeight:selec?600:400}}>
+                      {m}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
   function StatCard({label,value,color,moneda="ARS",sub}){
     return(<div style={{background:D.surface,borderRadius:14,padding:"14px",border:`1px solid ${D.border}`}}><p style={{fontSize:11,color:D.textMuted,margin:"0 0 6px",fontWeight:500,textTransform:"uppercase",letterSpacing:.5}}>{label}</p><p style={{fontSize:18,fontWeight:700,margin:0,color:color||D.text}}>{fmtShort(value,moneda)}</p>{sub&&<p style={{fontSize:11,color:D.textMuted,margin:"4px 0 0"}}>{sub}</p>}</div>);
