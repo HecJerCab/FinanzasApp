@@ -1595,6 +1595,35 @@ function PeriodFilter(){
       <button onClick={async()=>{await apiData({action:"saveCategoriasIngreso",record:catIngreso},token);showMsg("✓ Categorías guardadas");}} style={{width:"100%",padding:"12px",borderRadius:10,border:"none",background:D.green,color:"#fff",fontSize:14,fontWeight:600,marginTop:8}}>💾 Guardar categorías</button>
       <button onClick={()=>setCatIngreso(CAT_INGRESO_DEFAULT)} style={{width:"100%",padding:"10px",borderRadius:10,border:`1px solid ${D.border}`,background:D.surface2,color:D.textMuted,fontSize:13,marginTop:6}}>↺ Restaurar predeterminadas</button>
     </div>
+          <div style={{background:D.surface,borderRadius:16,padding:"16px",border:`1px solid ${D.border}`,marginBottom:12}}>
+        <p style={{fontWeight:600,marginBottom:12}}>Descripciones por categoría</p>
+        {catGasto.map(cat=>(
+          <div key={cat} style={{marginBottom:16}}>
+            <p style={{fontSize:12,fontWeight:600,color:CAT_COLORS[cat]||D.accent,marginBottom:6,textTransform:"uppercase",letterSpacing:.3}}>{cat}</p>
+            {(descripciones[cat]||[]).map((desc,idx)=>(
+              <div key={idx} style={{display:"flex",gap:8,marginBottom:6,alignItems:"center"}}>
+                <input value={desc} onChange={e=>{
+                  const nuevo={...descripciones,[cat]:[...(descripciones[cat]||[])]};
+                  nuevo[cat][idx]=e.target.value;
+                  setDescripciones(nuevo);
+                }} style={{flex:1}}/>
+                <button onClick={()=>{
+                  const nuevo={...descripciones,[cat]:(descripciones[cat]||[]).filter((_,i)=>i!==idx)};
+                  setDescripciones(nuevo);
+                }} style={{background:D.red+"22",border:`1px solid ${D.red}44`,borderRadius:8,padding:"8px 12px",color:D.red,fontSize:13,fontWeight:600,flexShrink:0}}>✕</button>
+              </div>
+            ))}
+            <button onClick={()=>{
+              const nuevo={...descripciones,[cat]:[...(descripciones[cat]||[]),""]};
+              setDescripciones(nuevo);
+            }} style={{width:"100%",padding:"8px",borderRadius:8,border:`1px solid ${D.accent}44`,background:D.accent+"11",color:D.accent,fontSize:12,fontWeight:600,marginTop:2}}>+ Agregar descripción</button>
+          </div>
+        ))}
+        <button onClick={async()=>{
+          await apiData({action:"saveDescripciones",record:descripciones},token);
+          showMsg("✓ Descripciones guardadas");
+        }} style={{width:"100%",padding:"12px",borderRadius:10,border:"none",background:D.accent,color:"#fff",fontSize:14,fontWeight:600,marginTop:4}}>💾 Guardar descripciones</button>
+      </div>
   </>}
         </div>
       </div>
