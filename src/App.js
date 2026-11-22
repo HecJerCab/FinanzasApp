@@ -1040,6 +1040,96 @@ const calcCuotaFn=(c)=>{
   const invPorTipo=CAT_INV.map((c,i)=>({label:c,value:fl.inversiones.filter(r=>r.tipo===c).reduce((s,r)=>s+r.monto,0),color:COLORS[i]})).filter(x=>x.value>0);
   const monthlyData=arr=>{const m={};arr.filter(r=>r.moneda===moneda).forEach(r=>{if(!r.fecha) return;const k=r.fecha.slice(0,7);m[k]=(m[k]||0)+r.monto;});return Object.entries(m).sort().slice(-6).map(([k,v])=>({label:k.slice(5)+"/"+k.slice(2,4),value:v}));};
 
+function AddGastoForm({catGasto,descripciones,onSave,loading,userName}){
+  const [d,setD]=useState({fecha:today(),persona:userName,moneda:"ARS",categoria:"",titulo:"",monto:"",nota:""});
+  const [query,setQuery]=useState("");
+  const [showSug,setShowSug]=useState(false);
+  const upd=(k,v)=>setD(p=>({...p,[k]:v}));
+
+  const sugerencias=(descripciones[d.categoria]||[]).filter(s=>
+    !query||s.toLowerCase().includes(query.toLowerCase())
+  );
+
+  return(
+    <div style={{background:D.surface,borderRadius:16,padding:"16px",marginBottom:14,border:`1px solid ${D.border}`}}>
+      <p style={{fontWeight:600,fontSize:14,marginBottom:12}}>Nuevo gasto</p>
+
+      {/* CATEGORIA */}
+      <div style={{marginBottom:10}}>
+        <label style={{display:"block",fontSize:11,color:D.textMuted,marginBottom:4,fontWeight:500,textTransform:"uppercase",letterSpacing:.3}}>Categoría</label>
+        <select value={d.categoria} onChange={e=>{upd("categoria",e.target.value);setQuery("");upd("titulo","");}}>
+          <option value="">Elegir...</option>
+          {catGasto.map(c=><option key={c} value={c}>{c}</option>)}
+        </select>
+      </div>
+
+      {/* DESCRIPCION CON AUTOCOMPLETE */}
+      <div style={{marginBottom:10,position:"relative"}}>
+        <label style={{display:"block",fontSize:11,color:D.textMuted,marginBottom:4,fontWeight:500,textTransform:"uppercase",letterSpacing:.3}}>Descripción</label>
+        <input
+          placeholder={d.categoria?"Escribí o elegí una descripción...":"Primero elegí una categoría"}
+          value={query}
+          disabled={!d.categoria}
+          onChange={e=>{setQuery(e.target.value);upd("titulo",e.target.value);setShowSug(true);}}
+          onFocus={()=>setShowSug(true)}
+          onBlur={()=>setTimeout(()=>setShowSug(false),150)}
+        />
+        {showSug&&d.categoria&&sugerencias.length>0&&(
+          <div style={{position:"absolute",top:"100%",left:0,right:0,background:D.surface,border:`1px solid ${D.border}`,borderRadius:10,zIndex:50,maxHeight:180,overflowY:"auto",boxShadow:"0 8px 24px rgba(0,0,0,.4)"}}>
+            {sugerencias.map(s=>(
+              <div key={s} onClick={()=>{setQuery(s);upd("titulo",s);setShowSug(false);}} style={{padding:"10px 14px",fontSize:14,cursor:"pointer",borderBottom:`1px solid ${D.border}33`}}
+                onMouseEnter={e=>e.currentTarget.style.background=D.surface2}
+                onMouseLeave={e=>e.currentTarget.style.background="transparent"}
+              >{s}</div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* MONTO Y MONEDA */}
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
+        <div>
+          <label style={{display:"block",fontSize:11,color:D.textMuted,marginBottom:4,fontWeight:500,textTransform:"uppercase",letterSpacing:.3}}>Monto</label>
+          <input type="number" placeholder="0" value={d.monto} onChange={e=>upd("monto",e.target.value)}/>
+        </div>
+        <div>
+          <label style={{display:"block",fontSize:11,color:D.textMuted,marginBottom:4,fontWeight:500,textTransform:"uppercase",letterSpacing:.3}}>Moneda</label>
+          <select value={d.moneda} onChange={e=>upd("moneda",e.target.value)}>
+            {MONEDAS.map(m=><option key={m}>{m}</option>)}
+          </select>
+        </div>
+      </div>
+
+      {/* QUIEN Y FECHA */}
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
+        <div>
+          <label style={{display:"block",fontSize:11,color:D.textMuted,marginBottom:4,fontWeight:500,textTransform:"uppercase",letterSpacing:.3}}>¿Quién?</label>
+          <input value={d.persona} onChange={e=>upd("persona",e.target.value)}/>
+        </div>
+        <div>
+          <label style={{display:"block",fontSize:11,color:D.textMuted,marginBottom:4,fontWeight:500,textTransform:"uppercase",letterSpacing:.3}}>Fecha</label>
+          <input type="date" value={d.fecha} onChange={e=>upd("fecha",e.target.value)}/>
+        </div>
+      </div>
+
+      {/* NOTA */}
+      <div style={{marginBottom:10}}>
+        <label style={{display:"block",fontSize:11,color:D.textMuted,marginBottom:4,fontWeight:500,textTransform:"uppercase",letterSpacing:.3}}>Nota</label>
+        <input placeholder="Opcional" value={d.nota} onChange={e=>upd("nota",e.target.value)}/>
+      </div>
+
+      <button onClick={()=>{
+        if(!d.titulo||!d.monto||!d.categoria) return;
+        onSave("gastos",d);
+        setD({fecha:today(),persona:userName,moneda:"ARS",categoria:"",titulo:"",monto:"",nota:""});
+        setQuery("");
+      }} disabled={loading} style={{width:"100%",padding:"13px",borderRadius:12,border:"none",background:loading?D.surface2:D.red,color:loading?D.textMuted:"#fff",fontSize:15,fontWeight:600,marginTop:4}}>
+        {loading?"Guardando...":"Guardar gasto ↗"}
+      </button>
+    </div>
+  );
+}
+
   function AddForm({type,fields}){
     const [d,setD]=useState({fecha:today(),persona:userName,moneda:"ARS"});
     const upd=(k,v)=>setD(p=>({...p,[k]:v}));
@@ -1198,7 +1288,7 @@ function PeriodFilter(){
           </>}
 
           {tab==="Gastos"&&<>
-            <AddForm type="gastos" fields={[{id:"titulo",label:"Descripción",placeholder:"Ej: Supermercado"},{id:"monto",label:"Monto",type:"number"},{id:"moneda",label:"Moneda",options:MONEDAS},{id:"categoria",label:"Categoría",options:catGasto},{id:"persona",label:"¿Quién pagó?"},{id:"fecha",label:"Fecha",type:"date"},{id:"nota",label:"Nota"}]}/>
+            <AddGastoForm catGasto={catGasto} descripciones={descripciones} onSave={addRecord} loading={loading} userName={userName}/>
             <PeriodFilter/>
             <button onClick={exportarGastosExcel} style={{width:"100%",padding:"10px",borderRadius:10,border:`1px solid ${D.green}44`,background:D.green+"11",color:D.green,fontSize:13,fontWeight:600,marginBottom:10}}>📊 Exportar Excel del período</button>  
             {chartLoaded&&fl.gastos.length>0&&<><div style={{background:D.surface,borderRadius:16,padding:"14px",border:`1px solid ${D.border}`,marginBottom:14}}><PieChart data={gastosPorCat}/></div><div style={{background:D.surface,borderRadius:16,padding:"14px",border:`1px solid ${D.border}`,marginBottom:14}}><BarChart data={monthlyData(records.gastos||[])} color={D.red} moneda={moneda}/></div></>}
