@@ -110,5 +110,16 @@ if (action === "getCategorias") {
     await kvSet(`finanzas:${prefix}:categorias_ingreso`, record);
     return res.json({ success: true });
   }
+
+  if (action === "getDescripciones") {
+    const data = await kvGet(`finanzas:shared:descripciones`);
+    return res.json({ success: true, data });
+  }
+
+  if (action === "saveDescripciones") {
+    await kvSet(`finanzas:shared:descripciones`, record);
+    return res.json({ success: true });
+  }  
+
   res.status(400).json({ error: "Acción inválida" });
 };
