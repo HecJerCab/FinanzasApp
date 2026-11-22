@@ -260,7 +260,7 @@ function EditModal({record,type,onSave,onClose,catGasto,catIngreso,tarjetas}){
           <div key={f.id} style={{marginBottom:10}}>
             <label style={{display:"block",fontSize:11,color:D.textMuted,marginBottom:4,fontWeight:500,textTransform:"uppercase",letterSpacing:.3}}>{f.label}</label>
             {f.options
-              ?(<select value={d[f.id]||""} onChange={e=>upd(f.id,e.target.value)}>{f.options.map(o=><option key={o}>{o}</option>)}</select>)
+              ?(<select value={d[f.id]||""} onChange={e=>upd(f.id,e.target.value)}>{f.options.map(o=><option key={o} value={o}>{o}</option>)}</select>)
               :(<input type={f.type||"text"} value={d[f.id]||""} onChange={e=>upd(f.id,f.type==="number"?Number(e.target.value):e.target.value)}/>)
             }
           </div>
