@@ -851,6 +851,7 @@ export default function App(){
   const [catGastoLoaded,setCatGastoLoaded]=useState(false);
   const [catIngreso,setCatIngreso]=useState(CAT_INGRESO_DEFAULT);
   const [catIngresoLoaded,setCatIngresoLoaded]=useState(false);
+  const [descripciones,setDescripciones]=useState({});
   const [token,setToken]=useState("");
   const [userName,setUserName]=useState("");
   const [tab,setTab]=useState("Inicio");
@@ -923,6 +924,8 @@ const calcCuotaFn=(c)=>{
     const catsIngreso=await apiData({action:"getCategoriasIngreso"},t);
     if(catsIngreso.success&&catsIngreso.data&&Array.isArray(catsIngreso.data)) setCatIngreso(catsIngreso.data);
     else setCatIngreso(CAT_INGRESO_DEFAULT);
+    const descs=await apiData({action:"getDescripciones"},t);
+    if(descs.success&&descs.data) setDescripciones(descs.data);
     setCatIngresoLoaded(true);
     setCatGastoLoaded(true);
     setLoading(false);
